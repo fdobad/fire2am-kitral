@@ -1,0 +1,3 @@
+[submodule "C2FSB"]
+	path = C2FSB
+	url = git@github.com:fire2a/C2FSB.git

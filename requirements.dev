@@ -1,0 +1,9 @@
+qtconsole
+pyperclip
+pandas
+numpy
+seaborn
+imread
+tqdm
+networkx
+Pillow

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/plugins/fire2am/img" >
+        <file>icon.png</file>
+        <file>icon_dev.png</file>
+    </qresource>
+</RCC>
