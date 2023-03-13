@@ -4,23 +4,28 @@
 - qgis: The easiest way to get up to speed with developing QGIS plugins is using the 'Plugin Builder' plugin and build a template.
 - cell2fire: Run the included examples
 
-## Coordinating QtDesigner and python code
-1. Object Naming Convention : 
-To coordinate from argparse dest names to QtDesigner, modules follow this prefix_suffix standard:
+## Object Naming Convention
+To coordinate `C2FSB/Cell2Fire/ParseInputs.py`, QtDesigner and the plugin code, the following standard must be followed: 
+
+Mostly when adding components in QtDesigner their object name is assigned `classType_n`, so you must change its `objectName` to `prefixName_destName`.  
 
 1.1 Prefix simplified component type: 
-	prefixName	:	<class type> 
-	layerComboBox	:	QgsMapLayerComboBox 
-	fileWidget	:	QgsFileWidget
-	radioButton	:	QRadioButton
-	spinBox		:	QSpingBox
-	doubleSpinBox	:	QDoubleSpingBox
 
-1.2 Suffix:
-	suffixName 	:	<argparse.item.dest>
-	ROS_CV		:	ROS_CV
+| prefixName	| 	`<class type>` |
+| --- | --- |
+| layerComboBox	|	QgsMapLayerComboBox |
+| fileWidget	|	QgsFileWidget |
+| radioButton	|	QRadioButton |
+| spinBox	|	QSpingBox |
+| doubleSpinBox	|	QDoubleSpingBox |
 
-1.3 Mandatory for double|spinBoxes, example: doubleSpinBox_ROS_CV. They are retrieved like this:
+1.2 Suffix, `destName` is the same used in `ParseInputs.py` by the `argparse` object:
+
+| suffixName 	|	`<argparse.item.dest>` |
+| --- | --- |
+| ROS_CV	|	ROS_CV |
+
+1.3 The results is that the ui values can be easily retrieved. For example for double|spinBoxes (example: doubleSpinBox_ROS_CV):
 
         args.update( { o.objectName()[ o.objectName().index('_')+1: ]: o.value() 
             for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox), 
