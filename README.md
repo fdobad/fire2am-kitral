@@ -35,7 +35,7 @@ git submodule update --init --recursive
 ```
 
 ## Screenshot  
-![panel_screenshot](img/panel_screenshot.png)
+![panel_screenshot](img/panel_screenshot.png)  
 0. On the Plugin Menu this plugin is shown selected  
 1. Its icon is also available on the Plugin Toolbar ![icon](img/icon.png)  
 2. Along other very useful plugins:  

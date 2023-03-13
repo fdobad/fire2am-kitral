@@ -459,7 +459,7 @@ for (normal distribution)
        <item row="1" column="4">
         <widget class="QPushButton" name="pushButton_dev">
          <property name="text">
-          <string>dev</string>
+          <string>[dev]</string>
          </property>
         </widget>
        </item>
@@ -735,26 +735,6 @@ Also hardware limited</string>
       <string/>
      </property>
      <layout class="QGridLayout" name="gridLayout_9">
-      <item row="0" column="6">
-       <widget class="QToolButton" name="toolButton_dummyResults">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>(dummy results)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="5">
-       <widget class="QPushButton" name="pushButton_run">
-        <property name="text">
-         <string>Run</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="0">
        <widget class="QPushButton" name="pushButton_restoreDefaults">
         <property name="text">
@@ -762,17 +742,10 @@ Also hardware limited</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QToolButton" name="toolButton_makeArgs">
+      <item row="0" column="3">
+       <widget class="QPushButton" name="pushButton_run">
         <property name="text">
-         <string>(Args)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QToolButton" name="toolButton_makeInstance">
-        <property name="text">
-         <string>(Folder)</string>
+         <string>Run</string>
         </property>
        </widget>
       </item>

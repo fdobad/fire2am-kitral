@@ -296,9 +296,6 @@ class fire2amClass:
         ''' main '''
         #self.dlg.tabWidget.currentChanged.connect(self.slot_tabWidget_currentChanged)
         self.dlg.pushButton_restoreDefaults.pressed.connect(self.slot_restoreDefaults)
-        self.dlg.toolButton_dummyResults.pressed.connect(self.slot_dummyResults)
-        self.dlg.toolButton_makeInstance.pressed.connect(self.makeInstanceIndep)
-        self.dlg.toolButton_makeArgs.pressed.connect(self.makeArgsIndep)
         self.dlg.pushButton_run.pressed.connect(self.run_All)
         ''' tab landscape '''
         self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectRaster)
@@ -539,17 +536,6 @@ class fire2amClass:
         except Exception as e:
             log( e, pre='Single .csv file %s exception'%filepath, level=2, msgBar=self.dlg.msgBar)
             restore()
-
-    def makeInstanceIndep(self):
-        self.now = datetime.now()
-        self.dlg.updateState()
-        self.makeArgs()
-        self.makeInstance()
-
-    def makeArgsIndep(self):
-        self.now = datetime.now()
-        self.dlg.updateState()
-        self.makeArgs()
 
     def makeArgs(self):
         ''' 0 empty args
@@ -950,38 +936,4 @@ class fire2amClass:
         mergeVectorLayers( polys, geo_package_file, mergedName )
         vectorLayer = self.iface.addVectorLayer( geo_package_file+'|layername='+mergedName, mergedName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+mergedName+'_layerStyle.qml'))
-
-    def slot_dummyResults(self):
-        self.loadResults()
-
-        # data
-        self.dlg.tableView_1.setModel(self.dlg.PandasModel(randomDataFrame(12,6,int)))
-        self.dlg.tableView_2.setModel(self.dlg.PandasModel(randomDataFrame(12,3,float)))
-
-        # plot
-        canvas0 = self.dlg.plt.new()
-        ax0 = canvas0.figure.subplots()
-        title='Static -- About as simple as it gets, folks'
-        ax0.set(xlabel='time (s)', ylabel='voltage (mV)', title=title)
-        t = np.linspace(0, 10, 50)
-        ax0.plot(t, np.tan(t)/t, ".")
-        self.dlg.comboBox_plot.addItem(title)
-
-        # plot
-        canvas1 = self.dlg.plt.new()
-        ax1 = canvas1.figure.subplots()
-        title='2 Static -- About as simple as it gets, folks'
-        ax1.set(xlabel='time (s)', ylabel='voltage (mV)', title=title)
-        t = np.linspace(0, 10, 50)
-        ax1.plot(t, np.tan(t)/t, ".")
-        self.dlg.comboBox_plot.addItem(title)
-
-        self.dlg.plt.show(0)
-        self.dlg.plt.show(1)
-        self.dlg.plt.show(0)
-        '''
-        pyqtRemoveInputHook()
-        pdb.set_trace()
-        #(Pdb) !import code; code.interact(local=dict(globals(), **locals()))
-        '''
 
