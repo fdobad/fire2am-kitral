@@ -2,8 +2,8 @@
 
 This repo contains a [QGIS](https://qgis.org) [plugin](https://plugins.qgis.org/) for graphically interfacing with Cell2Fire [SB](https://github.com/fire2a/C2FSB) simulator.  
 Choose your guide:
-- [User](readme_user.md)
-- [Developer](readme_dev.md)
+- [User](readme_user.md)![icon](img/icon.png)
+- [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
 ## Quickstart
 0. Have QGIS installed (developed using 3.1 long term version)  
@@ -17,7 +17,6 @@ Choose your guide:
     - type 'fire'
     - click 'install plugin'
 Now you have a new icon on the plugin toolbar and a new plugin menu.
-[icon](img/icon.png)
 
 ## Known issues
 - Don't close the current project with the dialogs opened
