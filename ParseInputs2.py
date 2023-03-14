@@ -246,11 +246,31 @@ def Parser2():
                         dest="OutMessages",
                         default=False,
                         action='store_true')
-    output.add_argument("--out-behavior",
-                        help="Generates ASCII files with hit ROS, Byram Intensity and Boolean for Crown Fire if correspondes",
-                        dest="OutBehavior",
+    output.add_argument("--out-fl",
+                        help="Generates ASCII files with Flame Length",
+                        dest="OutFl",
                         default=False,
                         action='store_true')
+    output.add_argument("--out-intensity",
+                        help="Generates ASCII files with Byram Intensity",
+                        dest="OutIntensity",
+                        default=False,
+                        action='store_true')
+    output.add_argument("--out-ros",
+                        help="Generates ASCII files with hit ROS",
+                        dest="OutRos",
+                        default=False,
+                        action='store_true')
+    output.add_argument("--out-crown",
+                        help="Generates ASCII files with Boolean for Crown Fire if correspondes",
+                        dest="OutCrown",
+                        default=False,
+                        action='store_true') 
+    output.add_argument("--out-cfb",
+                        help="Generates ASCII files with Crown Fire Fuel Consumption if correspondes",
+                        dest="OutCrownConsumption",
+                        default=False,
+                        action='store_true')                                                                        
     fire.add_argument("--Prometheus-tuned",
                         help="Activates the predefined tuning parameters based on Prometheus",
                         dest="PromTuning",
@@ -308,7 +328,7 @@ def Parser2():
                         help="Fire Period length in minutes (needed for ROS computations). Default 60",
                         dest="input_PeriodLen",
                         type=float,
-                        default=60)                    
+                        default=1.0)                    
     weather.add_argument("--Weather-Period-Length",
                         help="Weather Period length in minutes (needed weather update). Default 60",
                         dest="weather_period_len",

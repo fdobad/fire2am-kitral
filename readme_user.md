@@ -23,7 +23,9 @@ Setup its Coordinate Reference System (CRS):
  - Chile North : PSAD56 / UTM zone 19S
         
 #### 2. Instance Rasters:  
-_Beware: All layers must be .asc files with matching CRS and extent. Use QGIS processing algorithm clip to polygon if they don't match!_  
+_Beware: All layers must be .asc files with matching CRS, extent and resolution. Use QGIS processing algorithm clip to polygon if they don't match!_  
+_Beware PREVINCAT_: The header (first 6 lines) for ascii files must have 1 space between data, it contains multiple, change it to just 1 space:
+    Linux solution `$ sed -i -e '1,6 s/\s\+/ /g' *asc`
 2.1 Copy the ascii raster files into the project's folder  
 2.2 Drag and drop from `Project Home` (Browser panel) into the `Layers panel`  
 3.3 Set up the proper CRS for each layer  

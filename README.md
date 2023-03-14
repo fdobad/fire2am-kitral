@@ -6,7 +6,16 @@ Choose your guide:
 - [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
 ## Quickstart
-### Install
+### I now what I'm doing
+```
+# QGIS >=3.1 LTR is already installed
+cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git  fire2am
+pip install -r requirements.txt
+cd C2FSB/Cell2Fire
+make
+```
+### Install Overview
 0. Have QGIS installed (developed using 3.1 long term version)  
 1. Download or clone the repo, put in your qgis plugin folders  
     - Linux: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`

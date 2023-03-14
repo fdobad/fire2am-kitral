@@ -3,6 +3,54 @@ import os
 import re
 import numpy as np
 
+        self.dlg.toolButton_dummyResults.pressed.connect(self.slot_dummyResults)
+        self.dlg.toolButton_makeInstance.pressed.connect(self.makeInstanceIndep)
+        self.dlg.toolButton_makeArgs.pressed.connect(self.makeArgsIndep)
+
+    def makeInstanceIndep(self):
+        self.now = datetime.now()
+        self.dlg.updateState()
+        self.makeArgs()
+        self.makeInstance()
+
+    def makeArgsIndep(self):
+        self.now = datetime.now()
+        self.dlg.updateState()
+        self.makeArgs()
+
+    def slot_dummyResults(self):
+        self.loadResults()
+
+        # data
+        self.dlg.tableView_1.setModel(self.dlg.PandasModel(randomDataFrame(12,6,int)))
+        self.dlg.tableView_2.setModel(self.dlg.PandasModel(randomDataFrame(12,3,float)))
+
+        # plot
+        canvas0 = self.dlg.plt.new()
+        ax0 = canvas0.figure.subplots()
+        title='Static -- About as simple as it gets, folks'
+        ax0.set(xlabel='time (s)', ylabel='voltage (mV)', title=title)
+        t = np.linspace(0, 10, 50)
+        ax0.plot(t, np.tan(t)/t, ".")
+        self.dlg.comboBox_plot.addItem(title)
+
+        # plot
+        canvas1 = self.dlg.plt.new()
+        ax1 = canvas1.figure.subplots()
+        title='2 Static -- About as simple as it gets, folks'
+        ax1.set(xlabel='time (s)', ylabel='voltage (mV)', title=title)
+        t = np.linspace(0, 10, 50)
+        ax1.plot(t, np.tan(t)/t, ".")
+        self.dlg.comboBox_plot.addItem(title)
+
+        self.dlg.plt.show(0)
+        self.dlg.plt.show(1)
+        self.dlg.plt.show(0)
+        '''
+        pyqtRemoveInputHook()
+        pdb.set_trace()
+        #(Pdb) !import code; code.interact(local=dict(globals(), **locals()))
+        '''
 
 def chunks(l, n):
     n = max(1, n)
