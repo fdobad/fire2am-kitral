@@ -6,22 +6,27 @@ Choose your guide:
 - [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
 ## Quickstart
-### I now what I'm doing
+### I now what I'm doing (Linux)
 ```
 # QGIS >=3.1 LTR is already installed
+# clone to plugins folder
 cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
 git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git  fire2am
+# install python modules
 pip install -r requirements.txt
+# compile
 cd C2FSB/Cell2Fire
 make
 ```
 ### Install Overview
 0. Have QGIS installed (developed using 3.1 long term version)  
-1. Download or clone the repo, put in your qgis plugin folders  
+1. Download the latest release, unzip it, place it in your qgis plugin folders  
     - Linux: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
-    - Windows: `C:\Users\ \AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\fire2am`
+    - Windows: `C:\Users\<username>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\fire2am`
 2. Compile cell2fire c++ binary if not available
-2. Install python3 dependencies `pip install -r requirements.txt` 
+2. Install python3 dependencies:
+    - Windows: open OSGeo4W
+    - Linux: `pip install -r requirements.txt` 
 3. Activate the plugin:  
     - QGIS Menu > Plugins > Manage and Install Plugins > All  
     - type 'fire', select 'Fire Simulator Analytics Management'  
@@ -37,7 +42,7 @@ This plugin uses Cell2Fire [SB](https://github.com/fire2a/C2FSB) as a submodule
 ```
 # update plugin
 git pull
-# update cell2fire submodule (only the first time)
+# update cell2fire submodule to latest commit (only the first time)
 git submodule update --recursive --remote  
 # update cell2fire submodule
 git submodule update --init --recursive 
@@ -45,6 +50,7 @@ git submodule update --init --recursive
 
 ## Screenshot  
 ![panel_screenshot](img/panel_screenshot.png)  
+
 0. On the Plugin Menu this plugin is shown selected  
 1. Its icon is also available on the Plugin Toolbar ![icon](img/icon.png)  
 2. Along other very useful plugins:  
