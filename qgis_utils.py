@@ -156,6 +156,23 @@ def array2rasterFloat32( data, name, geopackage, extent, crs, nodata = None):
     provider.setEditable(False)
     del provider, fw, block
 
+def array2rasterFloat64( data, name, geopackage, extent, crs, nodata = None):
+    dataf64 = np.float64( data)
+    h,w = dataf64.shape
+    bites = QByteArray( dataf64.tobytes() ) 
+    block = QgsRasterBlock( Qgis.Float64, w, h)
+    block.setData( bites)
+    fw = QgsRasterFileWriter(geopackage)
+    fw.setOutputFormat('gpkg')
+    fw.setCreateOptions(['RASTER_TABLE='+name, 'APPEND_SUBDATASET=YES'])
+    provider = fw.createOneBandRaster( Qgis.Float64, w, h, extent, crs )
+    provider.setEditable(True)
+    provider.writeBlock( block, 1, 0, 0)
+    if nodata != None:
+        provider.setNoDataValue(1, nodata)
+    provider.setEditable(False)
+    del provider, fw, block
+
 def matchPoints2Raster( raster, points):
     ''' returns 3 lists: [ cell_id], [[ coord_x, coord_y]], [ feature ids] for points
         if the point is not in the extent it will not be returned: len(points) <= len(response)

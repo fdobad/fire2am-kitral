@@ -23,10 +23,10 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QProcess, QVariant
-from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox
+from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox, QCheckBox
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.Qt import Qt
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats #,QgsApplication, QgsTask 
+from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem#,QgsApplication, QgsTask 
 import processing
 
 
@@ -106,7 +106,9 @@ class fire2amClass:
 
         # global
         self.project = None
-        self.layer = {}
+        self.crs = None
+        self.extent = None
+        self.geopackage = None
 
         # QProcess
         self.proc_dir = os.path.join( self.plugin_dir, 'C2FSB')
@@ -277,17 +279,17 @@ class fire2amClass:
             elif re.match( '[Ii]gnition.*[Pp]oint', lname) and layer.type() == QgsMapLayerType.VectorLayer and layer.wkbType() == QgsWkbTypes.Point:
                 self.dlg.layerComboBox_ignitionPoints.setLayer(layer)
         ''' weather file'''
-        apath = self.project.absolutePath()
-        wfile = os.path.join( apath, 'Weather.csv' )
-        if os.path.isfile( wfile): 
-            self.dlg.fileWidget_weatherFile.setFilePath( wfile)
-            self.dlg.radioButton_weatherFile.setChecked(True)
-        ''' weather folder '''
-        wfolder = os.path.join( apath, 'Weathers' )
-        if os.path.isdir( wfolder): 
-            self.dlg.fileWidget_weatherFolder.setFilePath( wfolder)
-            self.dlg.radioButton_weatherFolder.setChecked(True)
-        #self.dlg.args['nweathers'] = 0
+        if apath := QgsProject.instance().absolutePath():
+            wfile = os.path.join( apath, 'Weather.csv' )
+            if os.path.isfile( wfile): 
+                self.dlg.fileWidget_weatherFile.setFilePath( wfile)
+                self.dlg.radioButton_weatherFile.setChecked(True)
+            ''' weather folder '''
+            wfolder = os.path.join( apath, 'Weathers' )
+            if os.path.isdir( wfolder): 
+                self.dlg.fileWidget_weatherFolder.setFilePath( wfolder)
+                self.dlg.radioButton_weatherFolder.setChecked(True)
+            #self.dlg.args['nweathers'] = 0
         ''' default values '''
         self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.dlg.spinBox_nthreads.setMaximum(cpu_count())
@@ -314,6 +316,7 @@ class fire2amClass:
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
+        self.dlg.pushButton.pressed.connect(self.checkMap)
         self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
         self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
@@ -341,12 +344,12 @@ class fire2amClass:
             self.first_start_dialog  = False
             self.dlg = fire2amClassDialog()
             self.dlg.msgBar.pushMessage(aName+' Hello World!','Keep a project with layers open when interacting', duration=-1, level=Qgis.Info)
-            self.project = QgsProject().instance()
             self.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.connect_slots()
 
+        '''
         if QgsProject.instance().mapLayers() == {}:
             self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
             log('Open a project with layers and restore defaults', pre='No layers found', level=3)
@@ -357,6 +360,7 @@ class fire2amClass:
             self.project = QgsProject().instance()
             log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
                                   self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
+        '''
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -558,6 +562,9 @@ class fire2amClass:
         args.update( { o.objectName()[o.objectName().index('_')+1:]: o.value() 
             for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox), 
                                         options= Qt.FindChildrenRecursively)})
+        args.update( { o.objectName()[o.objectName().index('_')+1:]: o.isChecked()
+            for o in self.dlg.findChildren( QCheckBox,
+                                        options= Qt.FindChildrenRecursively) if o.isChecked()})
         args.pop('windDirection')
         args.pop('windSpeed')
         args.pop('windConstLen')
@@ -578,6 +585,10 @@ class fire2amClass:
         else:
             args['finalGrid'] = True
         log('make args step 2',args, level=0)
+        # 2d crow fire logic
+        # TODO ? [ 'OutFl', 'OutIntensity', 'OutRos']
+        if 'OutCrown' in args.keys() or 'OutCrownConsumption' in args.keys():
+            args['cros'] = True
         # 3 discard default value args 
         popkeys = []
         for dkey in self.default_args:
@@ -624,10 +635,65 @@ class fire2amClass:
             self.first_start_argparse= True
             self.argdlg.destroy()
 
-    def run_All(self):
+    def checkMap(self):
+        '''
+        layerComboBox_ignitionPoints <- no need to be AAIGRID
+        layerComboBox_ignitionProbMap
+        layerComboBox_cbd
+        layerComboBox_fuels
+        layerComboBox_ccf
+        layerComboBox_elevation
+        layerComboBox_cbh
+        '''
+        prefix = 'layerComboBox_'
+        pl = len(prefix)
+        for key in filter( lambda key:  key[:pl] == prefix, self.dlg.state):
+            if layer := self.dlg.state[key]:
+                if key[pl:] != 'ignitionPoints':
+                    ret, val = check_gdal_driver_name( layer, driver_name='AAIGrid')
+                    if not ret:
+                        log( '%s selected layer %s has %s driver. Translate to AAIGrid!'%(key, layer.name(),val), pre='Not AAIGrid', level=2, msgBar=self.dlg.msgBar)
+                        return False
+
+                if layer.crs() == QgsCoordinateReferenceSystem():
+                    log('has not been set for',layer.name(),'in', key, pre='CRS error', level=3, msgBar=self.dlg.msgBar)
+                    return False
+                if layer.crs() != self.crs:
+                    log(str(layer.crs())+' is different from project '+str(self.crs)+'in'+str(key), pre='CRS error', level=3, msgBar=self.dlg.msgBar)
+                    return False
+        return True
+
+    def checkSameRasterExtentAndResolution(self):
+        ''' TODO
+        '''
+        for i,li in enumerate(lyrs):
+            for j,lj in enumerate(lyrs):
+                if i<j:
+                    self.externalProcess_message(str(lyrs[li][0].extent().asWktCoordinates()))
+                    self.externalProcess_message(str(lyrs[li][0].extent().asWktCoordinates()))
+                    self.externalProcess_message(str(lyrs[lj][0].extent().asWktCoordinates()))
+                    self.externalProcess_message( str(lyrs[li][0].extent().contains( lyrs[lj][0].extent())))
+                    if not (lyrs[li][0].extent().contains( lyrs[lj][0].extent()) and \
+                            lyrs[lj][0].extent().contains( lyrs[li][0].extent()) ):
+                        log('have different extents!',lyrs[li][0].name(), lyrs[lj][0].name(), pre='CRS!', level=3, msgBar=self.dlg.msgBar)
+                        self.externalProcess_message(str(lyrs[li][0].extent()))
+                        self.externalProcess_message(str(lyrs[lj][0].extent()))
+                        return False
+        return True
+
+    def updateProject(self):
         self.now = datetime.now()
+        self.project = QgsProject().instance()
+        self.crs = self.project.crs()
+        self.extent = self.dlg.state['layerComboBox_fuels'].extent()
+
+    def run_All(self):
         self.dlg.updateState()
+        self.updateProject()
+        if not self.checkMap():
+            return
         self.makeArgs()
+        self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
         self.makeInstance()
         self.externalProcess_start()
 
@@ -680,6 +746,14 @@ class fire2amClass:
         if self.proc:
             log('Process is running', pre="Can't run dev mode", level=2)
             return
+
+        self.dlg.updateState()
+        self.updateProject()
+        self.checkMap()
+        header, arg_str, gen_args, workdir = self.argdlg.get()
+        self.args['OutFolder'] = gen_args['OutFolder']
+        self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
+
         self.proc = QProcess()
         self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
         self.proc.setProcessChannelMode( QProcess.SeparateChannels)
@@ -687,9 +761,8 @@ class fire2amClass:
         self.proc.readyReadStandardError.connect( self.externalProcess_handle_stderr)
         self.proc.stateChanged.connect( self.externalProcess_handle_state)
         self.proc.finished.connect( self.externalProcess_finished)
-        #self.makeArgs()
-        header, arg_str, _, workdir = self.argdlg.get()
-        log('Starting DEV run'+self.gen_cmd,level=0)
+
+        log('Starting DEV run'+arg_str,level=0)
         self.proc.setWorkingDirectory( workdir)
         ar = shlex_split( header + ' ' + arg_str )
         self.proc.start( ar[0], ar[1:] )
@@ -731,7 +804,10 @@ class fire2amClass:
         with open(logfile, 'rb', buffering=0) as afile:
             text = afile.read().decode()
             self.externalProcess_message( text)
-        '''add output layer groups MOVING LAYERS AND ADDING TO GROUPS IS BUGGY 
+
+
+        ''' add output layer GROUP : 
+            MOVING LAYERS AND ADDING TO GROUPS IS BUGGY 
             outputGroupName='OUTPUT_'+os.path.basename(os.path.normpath(self.args['OutFolder']))
             root = QgsProject.instance().layerTreeRoot()
             outputGroup = root.addGroup(outputGroupName)
@@ -743,10 +819,7 @@ class fire2amClass:
             if not group:
                 group = root.addGroup(groupName)
         '''
-        grid_directory = os.path.join( self.args['OutFolder'], 'Grids')
-        if not os.path.isdir( grid_directory):
-            log('Grids folder in results folder', grid_directory,  pre='Does NOT exist', msgBar=self.dlg.msgBar, level=3)
-            return
+        ''' how many sims were ran '''
         if 'nsims' in self.args.keys():
             nsims = self.args['nsims']
         else:
@@ -755,10 +828,29 @@ class fire2amClass:
             self.load1sim()
         else:
             self.loadsims()
-        ''' make ignition points layer 
-            based on fuels raster
-        '''
-        geo_package_file=os.path.join(self.args['OutFolder'], 'outputs.gpkg')
+
+        self.after_ignitionPoints( text)
+
+        doit = [ 'OutFl' in self.args.keys(),
+                 'OutIntensity' in self.args.keys(),
+                 'OutRos' in self.args.keys(),
+                 'OutCrownConsumption' in self.args.keys()]
+        directories = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn']
+        filenames = ['FL', 'Intensity', 'ROSFile', 'Cfb']
+        names = ['flame_length', 'Byram_intensity', 'hit_ROS', 'crown_fire_fuel_consumption_ratio']
+        if nsims > 1:
+            names = ['mean_'+n for n in names ]
+
+        for i,(d,f,n) in filter( lambda x: doit[x[0]] , enumerate(zip(directories, filenames, names))):
+            self.after_asciiDir2float32MeanRaster(d, f, n, self.args['OutFolder'], self.geopackage, self.extent, self.crs, nodata=0.0)
+
+        if 'OutCrown' in self.args.keys():
+            layerName = 'crown_fire_scar'
+            if nsims > 1:
+                layerName = 'mean_'+layerName
+            self.after_asciiDir2Int16MeanRaster( 'CrownFire', 'Crown', layerName, self.args['OutFolder'], self.geopackage, self.extent, self.crs, nodata=0.0)
+
+    def after_ignitionPoints(self, text):
         data = np.fromiter( re.findall( 'ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)', text), dtype=np.dtype((int,2)) )
         simulation, ignitionCell = data.T
         feats = []
@@ -767,26 +859,96 @@ class fire2amClass:
             f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
             f.setId(s)
             feats += [ f]
-        layerName = 'after ignition points'
+        layerName = 'ex post ignition points'
         vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
-        vectorLayer.setCrs( self.project.crs())
+        vectorLayer.setCrs( self.crs)
         ret, val = vectorLayer.dataProvider().addFeatures(feats)
         log( ret, val, layerName, pre = 'vectorLayer data provider added features', level=0)
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.driverName = 'GPKG'
         options.layerName = layerName
-        if os.path.exists(geo_package_file):
+        if os.path.exists(self.geopackage):
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
         else:
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-        ret, val = QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , geo_package_file, options)
+        ret, val = QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , self.geopackage, options)
         log( ret, val, layerName, pre = 'vectorLayer writeAsVectorFormat', level=1)
-        vectorLayer = self.iface.addVectorLayer( geo_package_file+'|layername='+layerName, layerName, 'ogr')
+        vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+layerName, layerName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+layerName+'_layerStyle.qml'))
         log('finished loading results', pre='Done!', level=4, msgBar=self.dlg.msgBar)
 
+    def after_asciiDir2Int16MeanRaster(self, dirName, fileName, layerName, outfolder, geopackage, extent, crs, nodata = None):
+        ''' get filelist '''
+        filelist = glob( outfolder+os.sep+dirName+os.sep+fileName+'[0-9]*.asc')
+        nsim = np.fromiter( re.findall( dirName+os.sep+fileName+'([0-9]+).asc', ' '.join( filelist)), dtype=int)
+        asort = np.argsort( nsim)
+        nsim = nsim[ asort]
+        filelist = np.array( filelist)[ asort]
+        widthNum = len(str(np.max( nsim)))
+        ''' get all asc 2 array '''
+        self.externalProcess_message('Getting '+layerName+' grids to arrays...')
+        data = []
+        for afile in filelist:
+            data += [ np.loadtxt( afile,  dtype=bool, skiprows=6)]
+        data = np.array(data)
+        '''global stats'''
+        self.externalProcess_message(layerName+' global statistics '+str(stats.describe(data, axis=None)))
+        ''' calc mean '''
+        self.externalProcess_message('Calculating '+layerName+'...')
+        array2rasterFloat32( np.mean( data, axis=0, dtype=np.float32), layerName, self.geopackage, extent, crs, nodata = 0.0)
+        ''' show layer '''
+        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':'+layerName, layerName)
+        minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+        maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+        rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+
+    def after_asciiDir2float32MeanRaster(self, dirName, fileName, layerName, outfolder, geopackage, extent, crs, nodata = None):
+        '''
+            dirName = 'FlameLength'
+            fileName ='FL'
+            layerName ='mean_flame_length'
+            outfolder = self.args['OutFolder']
+            geopackage= os.path.join(self.args['OutFolder'], 'outputs.gpkg')
+            extent = None,
+            crs = self.project.crs,
+            nodata = 0.0 ):
+            ['CrownFire'      ] ['FlameLength'      , 'Intensity'           , 'RateOfSpread']
+            ['Crown'          ] ['FL'               , 'Intensity'           , 'ROSFile'     ]
+            ['mean_crown_fire'] ['mean_flame_length', 'mean_Byram_intensity', 'mean_hit_ROS']
+            import os.path
+            from glob import glob
+            import numpy as np
+            import re
+            outfolder = '/home/fdo/dev/Zona21/Instance23-03-14_15-49-22/results'
+            filelist = glob( outfolder+os.sep+'FlameLength'+os.sep+'FL[0-9]*.asc')
+            nsim = np.fromiter( re.findall( 'FlameLength'+os.sep+'FL([0-9]+).asc', ' '.join(filelist)), dtype=int)
+            array2rasterFloat32( np.mean( data, axis=0), 'mean_flame_length', self.geopackage, extent, crs, nodata = 0.0)
+        '''
+        ''' get filelist '''
+        filelist = glob( outfolder+os.sep+dirName+os.sep+fileName+'[0-9]*.asc')
+        nsim = np.fromiter( re.findall( dirName+os.sep+fileName+'([0-9]+).asc', ' '.join( filelist)), dtype=int)
+        asort = np.argsort( nsim)
+        nsim = nsim[ asort]
+        filelist = np.array( filelist)[ asort]
+        widthNum = len(str(np.max( nsim)))
+        ''' get all asc 2 array '''
+        self.externalProcess_message('Getting '+layerName+' grids to arrays...')
+        data = []
+        for afile in filelist:
+            data += [ np.loadtxt( afile,  dtype=np.float32, skiprows=6)]
+        data = np.array(data)
+        '''global stats'''
+        self.externalProcess_message(layerName+' global statistics '+str(stats.describe(data, axis=None)))
+        ''' calc mean '''
+        self.externalProcess_message('Calculating '+layerName+'...')
+        array2rasterFloat32( np.mean( data, axis=0, dtype=np.float32), layerName, self.geopackage, extent, crs, nodata = 0.0)
+        ''' show layer '''
+        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':'+layerName, layerName)
+        minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+        maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+        rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+
     def loadsims(self):
-        geo_package_file=os.path.join(self.args['OutFolder'], 'outputs.gpkg')
         extent = self.dlg.state['layerComboBox_fuels'].extent()
         crs = self.project.crs()
         outfolder = self.args['OutFolder']
@@ -813,12 +975,12 @@ class fire2amClass:
 
         ''' calc burnprob '''
         self.externalProcess_message('Calculating burn probabilities...')
-        array2rasterFloat32( np.mean( data, axis=0), 'mean_prob_burn', geo_package_file, extent, crs, nodata = 0.0)
+        array2rasterFloat32( np.mean( data, axis=0), 'mean_prob_burn', self.geopackage, extent, crs, nodata = 0.0)
         self.externalProcess_message('Added mean_prob_burn raster')
-        array2rasterFloat32(  np.std( data, axis=0),  'std_prob_burn', geo_package_file, extent, crs, nodata = 0.0)
+        array2rasterFloat32(  np.std( data, axis=0),  'std_prob_burn', self.geopackage, extent, crs, nodata = 0.0)
         self.externalProcess_message('Added std_prob_burn raster')
         self.externalProcess_message('Burn probabilities global statistics'+str(stats.describe(data, axis=None)))
-        layer = self.iface.addRasterLayer('GPKG:'+geo_package_file+':mean_prob_burn', 'mean_prob_burn')
+        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':mean_prob_burn', 'mean_prob_burn')
 
         minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
         maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
@@ -828,12 +990,12 @@ class fire2amClass:
         self.externalProcess_message('Making fire scar rasters...')
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'rFireScar_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            array2rasterInt16( data[i], layerName, geo_package_file, extent, crs, nodata = 0)
+            array2rasterInt16( data[i], layerName, self.geopackage, extent, crs, nodata = 0)
         self.externalProcess_message('All done!...')
         log('Simulations loaded correctly',pre='All done!', level=4, msgBar=self.dlg.msgBar)
 
+
     def load1sim(self):
-        geo_package_file=os.path.join(self.args['OutFolder'], 'outputs.gpkg')
         extent = self.dlg.state['layerComboBox_fuels'].extent()
         crs = self.project.crs()
         outfolder = self.args['OutFolder']
@@ -860,8 +1022,8 @@ class fire2amClass:
         self.externalProcess_message('Making fire evolution rasters...')
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'rFireEvolution_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            array2rasterInt16( data[i], layerName, geo_package_file, extent, crs, nodata = 0)
-            #raster = array2rasterLayerInt16( data[i], layerName, geo_package_file, extent, crs, nodata = 0)
+            array2rasterInt16( data[i], layerName, self.geopackage, extent, crs, nodata = 0)
+            #raster = array2rasterLayerInt16( data[i], layerName, self.geopackage, extent, crs, nodata = 0)
             #poly = raster2poly( raster, layerName, extent, crs)
         ''' raster 2 poly 
             1 get weather for datetime tagging
@@ -899,7 +1061,7 @@ class fire2amClass:
         options.driverName = 'GPKG'
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'FireEvolution_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            rasterLayer = QgsRasterLayer('GPKG:'+geo_package_file+':r'+layerName, 'r'+layerName)
+            rasterLayer = QgsRasterLayer('GPKG:'+self.geopackage+':r'+layerName, 'r'+layerName)
             tmp = processing.run('gdal:polygonize',
                        {'BAND' : 1, 
                         'EIGHT_CONNECTEDNESS' : False, 
@@ -920,20 +1082,20 @@ class fire2amClass:
                 vectorLayer.dataProvider().changeAttributeValues({ feature.id() : attr})
             vectorLayer.commitChanges()
             # write
-            if os.path.exists(geo_package_file):
+            if os.path.exists(self.geopackage):
                 options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
             else:
                 options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-            QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, geo_package_file, options)
+            QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, self.geopackage, options)
             del rasterLayer, vectorLayer
         ''' merge '''
         self.externalProcess_message('Merging fire evolution polygons...')
         polys=[]
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'vFireEvolution_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            polys += [ geo_package_file+'|layername='+layerName ]
+            polys += [ self.geopackage+'|layername='+layerName ]
         mergedName = 'merged_Fire_Evolution'
-        mergeVectorLayers( polys, geo_package_file, mergedName )
-        vectorLayer = self.iface.addVectorLayer( geo_package_file+'|layername='+mergedName, mergedName, 'ogr')
+        mergeVectorLayers( polys, self.geopackage, mergedName )
+        vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+mergedName, mergedName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+mergedName+'_layerStyle.qml'))
 

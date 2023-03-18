@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>6</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -27,6 +27,9 @@
        <item row="3" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_cbd">
          <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
           <bool>true</bool>
          </property>
         </widget>
@@ -39,7 +42,11 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QgsMapLayerComboBox" name="layerComboBox_fuels"/>
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_fuels">
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_8">
@@ -60,6 +67,9 @@
          <property name="allowEmptyLayer">
           <bool>true</bool>
          </property>
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item row="4" column="0">
@@ -77,11 +87,18 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QgsMapLayerComboBox" name="layerComboBox_elevation"/>
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_elevation">
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item row="2" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_cbh">
          <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
           <bool>true</bool>
          </property>
         </widget>
@@ -96,6 +113,9 @@
        <item row="3" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_ignitionPoints">
          <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
           <bool>true</bool>
          </property>
         </widget>
@@ -124,6 +144,9 @@ draw (uniform dist.) point within cell radius</string>
        <item row="2" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_ignitionProbMap">
          <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
           <bool>true</bool>
          </property>
         </widget>
@@ -453,13 +476,23 @@ for (normal distribution)
        <string>Run</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0" colspan="5">
-        <widget class="QPlainTextEdit" name="plainTextEdit"/>
+       <item row="1" column="1">
+        <spacer name="horizontalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>300</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
-       <item row="1" column="4">
-        <widget class="QPushButton" name="pushButton_dev">
+       <item row="1" column="5">
+        <widget class="QPushButton" name="pushButton">
          <property name="text">
-          <string>[dev]</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -476,6 +509,9 @@ for (normal distribution)
          </property>
         </widget>
        </item>
+       <item row="0" column="0" colspan="7">
+        <widget class="QPlainTextEdit" name="plainTextEdit"/>
+       </item>
        <item row="1" column="2">
         <widget class="QPushButton" name="pushButton_kill">
          <property name="sizePolicy">
@@ -489,18 +525,12 @@ for (normal distribution)
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <spacer name="horizontalSpacer_5">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="1" column="4">
+        <widget class="QPushButton" name="pushButton_dev">
+         <property name="text">
+          <string>[dev]</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>300</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
       </layout>
      </widget>

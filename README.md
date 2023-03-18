@@ -6,17 +6,23 @@ Choose your guide:
 - [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
 ## Quickstart
-### I now what I'm doing
+### Developer
 ```
-# QGIS >=3.1 LTR is already installed
+# QGIS >=3.1 is installed
 cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
-git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git  fire2am
-pip install -r requirements.txt
-cd C2FSB/Cell2Fire
+git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git fire2am
+cd fire2am
+pip install -r requirements.txt #although virtualenv also works!
+cd C2FSB/Cell2FireC
+sudo apt install g++ libboost-all-dev libeigen3-dev
 make
+# makefile assumes this EIGENDIR = /usr/include/eigen3/ change if needed
+(venv) $ qgis
 ```
 ### Install Overview
-0. Have QGIS installed (developed using 3.1 long term version)  
+0. Install QGIS
+    - Windows : 
+0. Have QGIS installed (developed using 3.1 long term release version under debian bullseye)  
 1. Download or clone the repo, put in your qgis plugin folders  
     - Linux: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
     - Windows: `C:\Users\ \AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\fire2am`
@@ -55,3 +61,4 @@ git submodule update --init --recursive
 
 ## Known issues  
 - Don't close the current project with the dialogs opened  
+- Don't try opening the results directory while the simulation is running, specially after the simulation while calculating statistics

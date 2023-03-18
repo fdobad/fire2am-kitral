@@ -72,7 +72,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.args = {}
 
     def updateState(self):
-        ''' for 5 types of widgets put their state, value, layer or filepath into a self.state dict 
+        ''' for widgets put their state, value, layer or filepath into a self.state dict 
             objectNames are defined on QtDesigner
         '''
         # radio button
@@ -88,8 +88,12 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
             for o in self.findChildren( QgsFileWidget, 
                                         options= Qt.FindChildrenRecursively)})
         # Double|SpinBox
-        self.state.update( { o.objectName(): o.value() 
-            for o in self.findChildren( (QtWidgets.QDoubleSpinBox, QtWidgets.QSpinBox), 
+        self.state.update( { o.objectName(): o.value()
+            for o in self.findChildren( (QtWidgets.QDoubleSpinBox, QtWidgets.QSpinBox),
+                                        options= Qt.FindChildrenRecursively)})
+        # CheckBox
+        self.state.update( { o.objectName(): o.isChecked()
+            for o in self.findChildren( QtWidgets.QCheckBox,
                                         options= Qt.FindChildrenRecursively)})
 
     def eventFilter(self, source, event):
