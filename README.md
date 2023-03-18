@@ -5,52 +5,77 @@ Choose your guide:
 - [User](readme_user.md)![icon](img/icon.png)
 - [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
-## Quickstart
-### Developer
+## Developer Quickstart
+### Install
 ```
-# QGIS >=3.1 is installed
+# QGIS >=3.1 LTR installed
 cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
 git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git fire2am
 cd fire2am
-pip install -r requirements.txt #although virtualenv also works!
-cd C2FSB/Cell2FireC
+pip install -r requirements.txt #virtualenv recommended!
+cd C2FSB/Cell2Fire
 sudo apt install g++ libboost-all-dev libeigen3-dev
-make
-# makefile assumes this EIGENDIR = /usr/include/eigen3/ change if needed
+make #makefile assumes EIGENDIR = /usr/include/eigen3/ change if needed
 (venv) $ qgis
 ```
-### Install Overview
-0. Install QGIS
-    - Windows : 
-0. Have QGIS installed (developed using 3.1 long term release version under debian bullseye)  
-1. Download or clone the repo, put in your qgis plugin folders  
-    - Linux: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
-    - Windows: `C:\Users\ \AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\fire2am`
-2. Compile cell2fire c++ binary if not available
-2. Install python3 dependencies `pip install -r requirements.txt` 
-3. Activate the plugin:  
-    - QGIS Menu > Plugins > Manage and Install Plugins > All  
-    - type 'fire', select 'Fire Simulator Analytics Management'  
-    - click 'Install Plugin'  
+### Update
+This plugin uses Cell2Fire [SB](https://github.com/fire2a/C2FSB) as a submodule  
+```
+# plugin
+git pull
+# latest Cell2FireSB 
+git submodule update --recursive --remote  
+```
+## Install
+### Windows
+0. Install QGIS, using OSGeo4W net installer  
+    - https://qgis.org/en/site/forusers/alldownloads.html#osgeo4w-installer  
+    - tick QGIS & pip modules  
+1. Download & unzip a release (from the right tab)  
+2. Run installer.bat  
+
+### Linux  
+0. Install QGIS  
+    - (Debian LTR version) Super Key > type 'QGIS' > Click Install
+    - https://qgis.org/en/site/forusers/alldownloads.html#linux
+1. Donwload release, unzip into plugin folder
+    - `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
+2. `cd` into it  
+3. Python requirements 
+3.1 Optional virtual environment 
+```
+python3 -m venv --include-system-packages ~/pyenvs/pyqgis 
+echo 'alias pyqgis="source ~/pyenvs/pyqgis/bin/activate"'>>~/.bashrc
+bash
+pyqgis
+```
+3.2 Install requirements  
+```
+pip install -r requirements.txt
+```
+4. Compile cell2fire c++ binary
+```
+cd C2FSB/Cell2Fire
+sudo apt install g++ libboost-all-dev libeigen3-dev
+# makefile assumes EIGENDIR = /usr/include/eigen3/ adjust if needed
+make 
+```
+
+### Activate  
+1. QGIS Menu > Plugins > Manage and Install Plugins > All  
+2. type 'fire', select 'Fire Simulator Analytics Management'  
+3. click 'Install Plugin'  
 Now you have a new icon on the plugin toolbar and a new plugin menu.  
-### Usage  
+
+## Usage Overview
 0. Open & save a qgis project  
 1. At least have a fuel raster layer in ascii AAIGrid format, according to Scott & Burgan fuels [definition](spain_lookup_table.csv)  
 2. Set project & layers CRS  
 3. Open the dialog, setup the layers, ignitions, weather & click Run!  
-### Update  
-This plugin uses Cell2Fire [SB](https://github.com/fire2a/C2FSB) as a submodule  
-```
-# update plugin
-git pull
-# update cell2fire submodule (only the first time)
-git submodule update --recursive --remote  
-# update cell2fire submodule
-git submodule update --init --recursive 
-```
 
 ## Screenshot  
 ![panel_screenshot](img/panel_screenshot.png)  
+
 0. On the Plugin Menu this plugin is shown selected  
 1. Its icon is also available on the Plugin Toolbar ![icon](img/icon.png)  
 2. Along other very useful plugins:  
