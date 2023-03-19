@@ -11,4 +11,8 @@ jobs:
         type: 'zip'
         filename: 'fire2am.zip'
         exclusions: '*.git*'
-
+    - name: Create Release
+      uses: ncipollo/release-action@v1.12.0
+      with:
+        artifacts: 'fire2am.zip'
+        token: ${{ secrets.GITHUB_TOKEN }}
