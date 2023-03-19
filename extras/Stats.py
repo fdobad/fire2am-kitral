@@ -33,7 +33,7 @@ from multiprocessing import Process
 # Extra
 from operator import itemgetter
 #import itertools
-from coord_xy import coord_xy
+#from coord_xy import coord_xy
 #from Cell2Fire.coord_xy import coord_xy        
 from tqdm import tqdm
 import networkx as nx
