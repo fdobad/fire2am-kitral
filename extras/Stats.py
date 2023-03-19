@@ -1140,3 +1140,73 @@ class Statistics:
             self.plotHistogram(Ah, NonBurned=True, xx="Hour", xmax=6, KDE=True,
                                title="Histogram: Burned and NonBurned Cells",
                                Path=self._StatsFolder, namePlot="Densities")
+
+'''
+    def mergePlot(self, multip=True):
+        # Read Forest
+        ForestFile = os.path.join( self._OutFolder, "InitialForest.png")
+        p1 = np.asarray( open_image( ForestFile))
+        p1 = add_alpha_channel(p1)
+        # Stats per simulation
+        for i in tqdm(range(self._nSims)):
+            PlotPath = os.path.join(self._OutFolder, "Plots", "Plots" + str(i + 1))
+            PlotFiles = glob.glob(os.path.join(PlotPath, 'Fire[0-9]*.*'))
+
+            if multip is False:
+                for (j, _) in enumerate(PlotFiles):
+                    self.combinePlot( p1, self._OutFolder, j + 1, i + 1)  
+            
+            else:
+                if system()!='Windows':
+                    # Multiprocess
+                    jobs = []
+
+                    for (j, _) in enumerate(PlotFiles):
+                        p = Process(target=self.combinePlot, args=( p1, self._OutFolder, j + 1, i + 1,))
+                        jobs.append(p)
+                        p.start()
+
+                    # complete the processes
+                    for job in jobs:
+                        job.join()            
+                else:
+                    # MonopSerial
+                    for (j, _) in enumerate(PlotFiles):
+                        self.combinePlot( p1, self._OutFolder, j + 1, i + 1)  
+
+    def ReadLogfile(self,folder,word_to_be_found):
+        a_file = open(os.path.join(folder,"Logfile.txt"), "r")
+        list_of_values = []
+        simulations=[]
+        for line in a_file:
+            stripped_line = line.strip()
+            line_list = stripped_line.split()
+            if word_to_be_found in line_list:
+                word_index=line_list.index(word_to_be_found)
+                simulation=(line_list[word_index+1])[:-1]
+                value=line_list[word_index+2]#valor subsiguiente a sim
+                list_of_values.append(int(value))
+                simulations.append(int(simulation))
+        a_file.close()
+        return list_of_values,simulations
+    
+    def ObtainIgnitionPairs(self,ncols,ignitions):
+        rows=[]
+        cols=[]
+        for ignition in ignitions:
+            row=int(ignition/ncols)+1
+            col=ignition%ncols
+            rows.append(row)
+            cols.append(col)
+        return rows,cols
+    
+    #generates a txt representing the ignition in each simulation. the format is: simulation, ordinal point, row, column
+    def OutfileIgnitions(self):
+        list_of_values,simulations=self.ReadLogfile(self._OutFolder, "sim")
+        rows,cols=self.ObtainIgnitionPairs(self._Cols, list_of_values)
+        dict_df={"Simulation": simulations,"Cell":list_of_values ,"Row": rows,"Col":cols}
+        df=pd.DataFrame(dict_df)
+        df.sort_values("Simulation",inplace=True)
+        np.savetxt(os.path.join(self._OutFolder,'Ignition_Coordinates.txt'), df.values, fmt='%d')
+        #df.to_csv(os.path.join(results_folder,"Ignition_Coordinates.csv"),index=False)
+'''
