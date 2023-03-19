@@ -26,7 +26,7 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QProcess,
 from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox, QCheckBox
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.Qt import Qt
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem#,QgsApplication, QgsTask 
+from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem #, QgsTask ,QgsApplication, QgsMessageLog 
 import processing
 
 
@@ -213,9 +213,9 @@ class fire2amClass:
         icon_path = ':/plugins/fire2am/img/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'%s: setup and run a forest fire simulation...'%aName),
-            callback=self.run_Dialog,
-            parent=self.iface.mainWindow())
+            text = self.tr(u'%s: setup and run a forest fire simulation...'%aName),
+            callback = self.run_Dialog,
+            parent = self.iface.mainWindow())
         # dock start
         self.add_action(
             icon_path = ':/plugins/fire2am/img/icon_dev.png',
@@ -316,10 +316,10 @@ class fire2amClass:
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        self.dlg.pushButton.pressed.connect(self.checkMap)
         self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
         self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
+        self.dlg.pushButton.pressed.connect(self.slot_doit)
         ''' tab tables '''
         ''' tab graphs '''
         #self.dlg.comboBox_plot.currentIndexChanged.connect( self.showPlot)
@@ -859,7 +859,7 @@ class fire2amClass:
             f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
             f.setId(s)
             feats += [ f]
-        layerName = 'ex post ignition points'
+        layerName = 'ignition points'
         vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
         vectorLayer.setCrs( self.crs)
         ret, val = vectorLayer.dataProvider().addFeatures(feats)
@@ -874,7 +874,7 @@ class fire2amClass:
         ret, val = QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , self.geopackage, options)
         log( ret, val, layerName, pre = 'vectorLayer writeAsVectorFormat', level=1)
         vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+layerName, layerName, 'ogr')
-        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+layerName+'_layerStyle.qml'))
+        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+'points_layerStyle.qml'))
         log('finished loading results', pre='Done!', level=4, msgBar=self.dlg.msgBar)
 
     def after_asciiDir2Int16MeanRaster(self, dirName, fileName, layerName, outfolder, geopackage, extent, crs, nodata = None):
@@ -994,7 +994,6 @@ class fire2amClass:
         self.externalProcess_message('All done!...')
         log('Simulations loaded correctly',pre='All done!', level=4, msgBar=self.dlg.msgBar)
 
-
     def load1sim(self):
         extent = self.dlg.state['layerComboBox_fuels'].extent()
         crs = self.project.crs()
@@ -1099,3 +1098,5 @@ class fire2amClass:
         vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+mergedName, mergedName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+mergedName+'_layerStyle.qml'))
 
+    def slot_doit(self):
+        self.iface.messageBar().pushSuccess(aName+': do it', 'push button pressed')

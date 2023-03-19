@@ -71,7 +71,9 @@ Now you have a new icon on the plugin toolbar and a new plugin menu.
 0. Open & save a qgis project  
 1. At least have a fuel raster layer in ascii AAIGrid format, according to Scott & Burgan fuels [definition](spain_lookup_table.csv)  
 2. Set project & layers CRS  
-3. Open the dialog, setup the layers, ignitions, weather & click Run!  
+3. Open the dialog, setup the layers, ignitions, weather on each tab. Click Run!  
+4. Wait for the simulation & postprocessing. 
+5. Main results will be added as a layer, the rest will be stored into outputs.gpkg  
 
 ## Screenshot  
 ![panel_screenshot](img/panel_screenshot.png)  
@@ -85,5 +87,6 @@ Now you have a new icon on the plugin toolbar and a new plugin menu.
     - IPython QGIS Console : A introspection capable ipython session based on qtconsole  
 
 ## Known issues  
+- Directories or folders with spaces won't work
 - Don't close the current project with the dialogs opened  
-- Don't try opening the results directory while the simulation is running, specially after the simulation while calculating statistics
+- Don't try opening the results directory while the simulation is running, specially -after the simulation- while postprocessing statistics
