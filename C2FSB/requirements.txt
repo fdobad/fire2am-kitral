@@ -1,0 +1,11 @@
+numpy
+pandas
+matplotlib==3.5.2
+seaborn
+imread
+tqdm
+
+networkx
+rasterio
+scipy
+deap
