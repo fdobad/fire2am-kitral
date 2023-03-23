@@ -50,6 +50,8 @@ from glob import glob
 import numpy as np
 import os.path
 import re
+from pathlib import Path
+import sys
 
 # For debugging
 #import pdb
@@ -111,7 +113,7 @@ class fire2amClass:
         self.geopackage = None
 
         # QProcess
-        self.proc_dir = os.path.join( self.plugin_dir, 'C2FSB')
+        self.proc_dir = str(Path(os.path.join( self.plugin_dir, 'C2FSB')))
         self.proc_exe = 'python3 main.py'
         self.proc = None
         self.name_state = { QProcess.ProcessState.NotRunning: 'Not running',
@@ -602,16 +604,18 @@ class fire2amClass:
         self.now_str = self.now.strftime('%y-%m-%d_%H-%M-%S')
         if self.first_start_argparse:
             ''' never opened '''
-            args['InFolder'] = os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep
-            args['OutFolder'] = os.path.join( args['InFolder'], 'results')
+            #args['InFolder'] = Path(os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep ))
+            #args['OutFolder'] = Path(os.path.abspath( os.path.join( args['InFolder'], 'results') ))
+            args['InFolder'] = os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) )+ os.path.sep 
+            args['OutFolder'] = os.path.abspath( os.path.join( args['InFolder'], 'results') )
         else:
             ''' did opened '''
             args.update(self.argdlg.gen_args)
             ''' but didnt mention ioFolder '''
             if 'InFolder' not in self.argdlg.gen_args.keys():
-                args['InFolder'] = os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep
+                args['InFolder'] = os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep)
             if 'OutFolder' not in self.argdlg.gen_args.keys():
-                args['OutFolder'] = os.path.join( args['InFolder'], 'results')
+                args['OutFolder'] = os.path.abspath( os.path.join( args['InFolder'], 'results'))
             self.proc_dir = self.argdlg.fileWidget_directory.filePath()
             self.proc_exe = self.argdlg.header
         log('make args step 4',args, level=0)
@@ -728,7 +732,7 @@ class fire2amClass:
             self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
             self.proc.setWorkingDirectory( self.proc_dir)
             self.externalProcess_message('workdir %s'%self.proc_dir)
-            ar = shlex_split( self.proc_exe +' '+ self.gen_cmd  )
+            ar = shlex_split( self.proc_exe +' '+ self.gen_cmd , posix="win" not in sys.platform )
             self.externalProcess_message('args %s'%ar)
             log( 'ar', *ar, level=0)
             self.proc.start( ar[0], ar[1:] )
