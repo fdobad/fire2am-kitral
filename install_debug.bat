@@ -1,13 +1,13 @@
 ECHO :: fire2am says :: Welcome to the plugin installer
 ECHO.
 
-REM CALL "C:\OSGeo4W\bin\o4w_env.bat" || ECHO :: fire2am says :: Qgis Environment failed
+CALL "C:\OSGeo4W\bin\o4w_env.bat" || ECHO :: fire2am says :: Qgis Environment failed
 IF %ERRORLEVEL% neq 0 goto ProcessError
 
-REM python -m pip install --upgrade setuptools wheel pip || ECHO :: fire2am says :: Upgrading pip & tools failed
+python -m pip install --upgrade setuptools wheel pip || ECHO :: fire2am says :: Upgrading pip tools failed
 IF %ERRORLEVEL% neq 0 goto ProcessError
 
-REM pip install -r requirements.txt || ECHO :: fire2am says :: Installing python packages failed
+pip install -r requirements.txt || ECHO :: fire2am says :: Installing python packages failed
 IF %ERRORLEVEL% neq 0 goto ProcessError
 
 IF EXIST "%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\fire2am" RMDIR /s /q "%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\fire2am"
@@ -26,6 +26,6 @@ REM process error
 ECHO.
 COLOR 4
 ECHO	:: fire2am says :: Errors were made
-ECHO	Please run 'install_debug.bat' & report the issue at https://www.github.com/fire2aam/fire2aam-qgis-plugin/issues
+ECHO	Please run 'install_debug.bat' and report the issue at https://www.github.com/fire2aam/fire2aam-qgis-plugin/issues
 PAUSE
 exit /b 1
