@@ -1,0 +1,30 @@
+name: Create Archive
+
+on:
+  create:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+jobs:
+  build-n-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+
+    - name: Zip Release
+      uses: TheDoctor0/zip-release@0.7.1
+      with:
+        type: 'zip'
+        filename: 'fire2am.zip'
+        exclusions: '*.git*'
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1.12.0
+      with:
+        artifacts: 'fire2am.zip'
+        token: ${{ secrets.GITHUB_TOKEN }}
