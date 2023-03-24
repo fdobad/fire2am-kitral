@@ -7,8 +7,10 @@ Choose your guide:
 
 This softwares enables you to simulate thousand of forest fires on a landscape using QGIS. At least you'll need a fuel and elevation layer.
 
-## Install Overview
-The plugin needs to install additional python packages and copy its source folder to QGIS's plugins directory.
+## Installation
+- pip install python required packages
+- move the source folder to QGIS's plugins directory
+- activate inside QGIS
 
 ### Windows
 0. Install QGIS, using OSGeo4W net installer  
@@ -20,7 +22,12 @@ The plugin needs to install additional python packages and copy its source folde
 3. Inside, double click on `installer_windows.bat`
     - 'More info' on the warning dialog
     - 'Run anyway'
-4. [Install the plugin inside QGIS](#Activate)
+4. [Install the plugin inside QGIS](#activate)
+
+<figure>
+    <img src="img/win_install_script.gif" width=66% alt='missing'>
+    <figcaption>executing installer</figcaption>
+</figure>
 
 
 ### Linux  
