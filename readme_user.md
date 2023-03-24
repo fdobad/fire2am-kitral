@@ -1,6 +1,6 @@
-        Fire 2 Advances Analytics & Management Research Center presents,
+        Fire 2 Advanced Analytics & Management Research Center,
 
-            Fire Simulator Analytics Management
+            Fire Analytics Management
                 (fire2am QGIS plugin)
 
                     USER GUIDE
@@ -10,39 +10,50 @@
 1. Getting QGIS
 2. Getting the plugin
 
-## Preparation
-#### 0. Locale is plain english without special chars (á, é, ... ñ), dates are isoformated (yymmdd)  
-Spanish localized files using `,` as decimal separator, must be replaced to `.`  
-    Linux solution: `$ sed -i -e 's/,/\./g' *.asc`
+## Files Preparation
+#### 0. Formats:
+ 
+- Locale is plain english without special chars (á, é, ... ñ)  
+- Dates are isoformated (YYmmDD HH:MM:SS)  
+- Spanish localized files using `,` as decimal separator, __must be replaced to `.`__  
+    - Linux solution: `$ sed -i -e 's/,/\./g' *.asc`
 
-#### 1. Project:  
-Is recommended to start in an empty folder, name and save an empty qgis project. _This will enable the 'Project Home' folder in the 'Browser' panel._  
-Setup its Coordinate Reference System (CRS):  
-`Menu > Project > Properties (Ctrl+Shift+P) > CRS (on the vertical left tab)`
- - PREVINCAT : UTM 31N ETRS89
- - Chile North : PSAD56 / UTM zone 19S
+#### 1. Project location:  
+- File and folder names __must avoid the space character__ (also avoid cloud folders that modify your files without asking)  
+- The safest is to start in a empty folder and save a new empty qgis project. _This will enable the 'Project Home' folder in the 'Browser' panel (to drag & drop things into)._  
+- Setup its Coordinate Reference System (CRS):  
+     - By clicking on the bottom right corner (left to the 'Messages' button that opens the very useful log panel btw) world icon  
+     - Or by `Menu > Project > Properties > CRS (on the vertical left tab)`  
+     - Or keyboard shortcut `Ctrl+Shift+P`  
+
+    Known used CRSs:
+     - PREVINCAT : UTM 31N ETRS89
+     - Chile North : PSAD56 / UTM zone 19S
         
 #### 2. Instance Rasters:  
-_Beware: All layers must be .asc files with matching CRS, extent and resolution. Use QGIS processing algorithm clip to polygon if they don't match!_  
-_Beware PREVINCAT_: The header (first 6 lines) for ascii files must have 1 space between data, it contains multiple, change it to just 1 space:
-    Linux solution `$ sed -i -e '1,6 s/\s\+/ /g' *asc`
-2.1 Copy the ascii raster files into the project's folder  
-2.2 Drag and drop from `Project Home` (Browser panel) into the `Layers panel`  
-3.3 Set up the proper CRS for each layer  
-    `Select layer(s), 2dary click, 'Set CRS...'`  
-    
-__Unexpected and unexplained errors will occur if the CRSs are not correctly set!__
-    
-#### 3. Weather files:
-There are two flavors: whether a single `Weather.csv` file or a folder with sequentially numerated `Weather/Weather1..N.csv` files.  
+- All layers must be ascii AAIGrid formatted .asc files with matching CRS, extent and resolution. _Use QGIS processing algorithm clip to polygon if they don't match!_  
 
-    Headers: Instance,datetime,WD,WS,FireScenario
+- The header (first 6 lines) for asc files __must have 1 space__ between its data, i.e., `ncols 40` not `ncols    40`
+    - _This happens on PREVINCAT data_
+    - Linux solution `$ sed -i -e '1,6 s/\s\+/ /g' *asc`
+
+1. Copy the ascii raster files into the 'Project Home' folder  
+2. Drag and drop from 'Project Home' (Browser panel) into the 'Layers panel'  
+3. Set up the proper CRS for each layer by: `Select layer(s) > 2dary click > 'Set CRS...'`  
+    
+__Expect errors if layers and project CRS are not set!__
+
+#### 3. Weather files:
+Cell2Fire simulator currently support a single wind direction and speed for the whole grid. This vector can change overtime and between scenarios.
+- There are two flavors: whether a single `Weather.csv` file or a folder with sequentially numerated `Weather/Weather1..N.csv` files.  
+
+    Headers: Instance,datetime,WD,WS,FireScenario  
     Instance: any string  
     datetime: YYYY-mm-DD[T]HH:MM:SS format HOURLY spaced!!  
-    Wind Direction: 0-359 integer
-    Wind Speed: positive integer
+    Wind Direction: 0-359 integer  
+    Wind Speed: positive integer  
     FireScenario: integer (deprecated?)  
-    
+
 - Datetimes are used for timestamping the fire evolution polygons (isochrones or animation frames) on single fire simulations, so hourly separated data is recommended (if you use the same value for two rows, the animation won't work at post processing, but the simulation will be fine)  
 - For PREVINCAT `.wnd` files a reformater script is provided on [extras folder](). Usage example:
 ```
@@ -50,7 +61,6 @@ python3 wnd2Weathercsv 40_10032007.wnd
 ```
 
 ## Usage
-### Overview
 #### 1. Run the Fire2am dialog window by:  
 1.1 Clicking on the fire2am icon ![icon](img/icon.png), on the Plugins Toolbar  
 1.2 `Menu > Plugins > Fire Simulator Analytics Management > setup and run a forest fire simulation`  

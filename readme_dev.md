@@ -1,13 +1,50 @@
 # Developer guide
 
-## Introduction
 - pyqgis: Open the python console, use the provided `extras/qgis_sandbox.py` to test commands  
 - IPythonQgis : Install the IPython Console plugin (`pip install qtconsole` is required)  
 - qgis plugin: The easiest way to get up to speed with developing QGIS plugins is using the 'Plugin Builder' plugin and build a template.  
-- cell2fire: Run the included examples 
+- cell2fire: Run the included examples, visit https://github.com/fire2a 
 
-## Object Naming Convention
-To coordinate `C2FSB/Cell2Fire/ParseInputs.py`, QtDesigner and the plugin code, the following standard must be followed: 
+## Clone instead of installing
+The plugin and the simulator are developed in different repos so cloning both repos with one as a submodule is suggested
+    ```
+    # 0. QGIS >=3.1 LTR installed (opened once else the following directory won't exist)
+
+    # 1. 
+    cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+
+    # 2. 
+    git clone git@github.com:fdobad/fire2am-qgis-plugin.git fire2am
+
+    # 3. (optional) submodule
+    cd fire2am
+    rm -r C2FSB
+    git submodule init
+    git submodule add git@github.com:fire2a/C2FSB.git C2FSB
+    cd ..
+
+    # 4. (Optional) virtual environment : Remember to activate it every time
+    python3 -m venv --system-site-packages ~/pyenv/pyqgis
+    echo 'alias pyqgis="source ~/pyenv/pyqgis/bin/activate"'>>~/.bashrc
+    echo 'alias qgis="source ~/pyenv/pyqgis/bin/activate && qgis"'>>~/.bashrc
+    bash
+    pyqgis
+
+    # 5.
+    pip install --upgrade pip wheel setuptools
+    pip install -r requirements.txt
+
+    # 6. Compile
+    cd C2FSB/Cell2Fire
+    sudo apt install g++ libboost-all-dev libeigen3-dev
+    make
+    ```
+    If it fails check where your distribution installs eigen. Because the `makefile` assumes `EIGENDIR = /usr/include/eigen3/`  
+    Locate it with `nice find / -readable -type d -name eigen3 2>/dev/null`  
+    Then edit `makefile` accordingly & try again.  
+
+## 1. Object Naming Convention
+To coordinate `C2FSB/Cell2Fire/ParseInputs.py`, QtDesigner and the plugin code (start at `fire2am.py`), the following standard must be followed: 
 
 Mostly when adding components in QtDesigner their object name is assigned `classType_n`, so you must change its `objectName` to `prefixName_destName`.  
 
@@ -33,7 +70,8 @@ Mostly when adding components in QtDesigner their object name is assigned `class
             for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox), 
                                         options= Qt.FindChildrenRecursively)})
 
-1.4 RadioButton Groups share the same startin suffix name, then Uppercase diverge:
+1.4 RadioButton Groups share the same startin suffix name, then camel Uppercase distinctions:  
+
 	radioButton_weatherFile, 
 	radioButton_weatherFolder, 
 	radioButton_weatherRandom, 
@@ -43,9 +81,10 @@ Mostly when adding components in QtDesigner their object name is assigned `class
 	radioButton_ignitionPoints, 
 	radioButton_ignitionProbMap
 
-## adding new resources
+## 2. adding new resources
 ### compile resources if new icons added
 ```
+cd img
 pyrcc5 -o resources.py resources.qrc
 ```
 ### Qt Designer bug when adding a resource
@@ -58,12 +97,12 @@ Delete the line in between
 ```
 Ref: [broken plugin](https://gis.stackexchange.com/questions/271848/the-plug-in-is-broken-no-module-named-resources)
 
-## For cell2fire developer tips
+## 3. Cell2fire python developer tips
 - use print('...', flush=True) for rasing the message to the gui
 - never use import *
 - prefer np.loadtxt over pd.read_csv
 
-## References
+## 4. References
 ### Required
 - [qgis docs](https://docs.qgis.org/latest/en/docs/index.html)
 - [pyqgis api](https://www.qgis.org/pyqgis/master/index.html)

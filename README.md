@@ -5,67 +5,55 @@ Choose your guide:
 - [User](readme_user.md)![icon](img/icon.png)
 - [Developer](readme_dev.md)![icon](img/icon_dev.png)
 
-## Developer Quickstart
-### Install
-```
-# QGIS >=3.1 LTR installed
-cd ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
-git clone --recursive git@github.com:fdobad/fire2am-qgis-plugin.git fire2am
-cd fire2am
-pip install -r requirements.txt #virtualenv recommended!
-cd C2FSB/Cell2Fire
-sudo apt install g++ libboost-all-dev libeigen3-dev
-make #makefile assumes EIGENDIR = /usr/include/eigen3/ change if needed
-(venv) $ qgis
-```
-### Update
-This plugin uses Cell2Fire [SB](https://github.com/fire2a/C2FSB) as a submodule  
-```
-# plugin
-git pull
-# latest Cell2FireSB 
-git submodule update --recursive --remote  
-```
-## Install
+This softwares enables you to simulate thousand of forest fires on a landscape using QGIS. At least you'll need a fuel and elevation layer.
+
+## Install Overview
+The plugin needs to install additional python packages and copy its source folder to QGIS's plugins directory.
+
 ### Windows
 0. Install QGIS, using OSGeo4W net installer  
     - https://qgis.org/en/site/forusers/alldownloads.html#osgeo4w-installer  
-    - tick QGIS & pip modules  
-1. Download & unzip a release (from the right tab)  
-2. Run installer.bat  
+    - Use default options for everything but
+    - Select packages to install "QGIS desktop" & "pip"
+1. At least open and close QGIS once
+2. Download & un7zip a release (from the right tab) into `fire2am` (default suggested name)  
+3. Inside, double click on `installer_windows.bat`
+    - 'More info' on the warning dialog
+    - 'Run anyway'
+4. [Install the plugin inside QGIS](#Activate)
+
 
 ### Linux  
 0. Install QGIS  
-    - (Debian LTR version) Super Key > type 'QGIS' > Click Install
-    - https://qgis.org/en/site/forusers/alldownloads.html#linux
-1. Donwload release, unzip into plugin folder
-    - `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
+    - Debian LTR version: Super Key > type 'QGIS' > Click Install
+    - Others: https://qgis.org/en/site/forusers/alldownloads.html#linux
+1. Donwload a release, unzip into the plugins folder `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am`
 2. `cd` into it  
-3. Python requirements 
-3.1 Optional virtual environment 
-```
-python3 -m venv --include-system-packages ~/pyenvs/pyqgis 
-echo 'alias pyqgis="source ~/pyenvs/pyqgis/bin/activate"'>>~/.bashrc
-bash
-pyqgis
-```
-3.2 Install requirements  
-```
-pip install -r requirements.txt
-```
-4. Compile cell2fire c++ binary
-```
-cd C2FSB/Cell2Fire
-sudo apt install g++ libboost-all-dev libeigen3-dev
-# makefile assumes EIGENDIR = /usr/include/eigen3/ adjust if needed
-make 
-```
+3. Python requirements  
+(Optional) A virtual environment can be used, but you must remember to activate it before launching QGIS, for example `$ source ~/pyenv/qgis/bin/activate && qgis`  
+    ```
+    pip install --upgrade pip wheel setuptools
+    pip install -r requirements.txt
+    ```
+4. A Cell2Fire c++ simulator binary is provided, but is better to compile it  
+    ```
+    cd C2FSB/Cell2FireC
+    sudo apt install g++ libboost-all-dev libeigen3-dev
+    make 
+    ```  
+    
+    If it fails check where your distribution installs eigen. Because the `makefile` assumes `EIGENDIR = /usr/include/eigen3/`  
+    Locate it with `nice find / -readable -type d -name eigen3 2>/dev/null`  
+    Then edit `makefile` accordingly & try again.  
 
-### Activate  
+5. [Enable the plugin inside QGIS](#Activate)
+
+### Activate
 1. QGIS Menu > Plugins > Manage and Install Plugins > All  
 2. type 'fire', select 'Fire Simulator Analytics Management'  
 3. click 'Install Plugin'  
 Now you have a new icon on the plugin toolbar and a new plugin menu.  
+
 
 ## Usage Overview
 0. Open & save a qgis project  
