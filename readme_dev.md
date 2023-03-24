@@ -1,13 +1,26 @@
 # Developer guide
 
+## The developer dialog
+
+The plugin includes a secundary dialog with the icon ![img/icon_dev.png](img/icon_dev.png); that works entagled to the main simulator dialog.  
+This dialog reads Cell2Fire's argument parser directly and exposes all of them in a tree view, enabling the following:  
+- Easy selection and modification of all simulator parameters (by selecting its checkbox and modifying its value) overriding the normal dialog options.  
+- A load and save button to persist the working configuration in the project's home folder by a pickle.dump file.  
+- A text display showing how the selected command line argument looks according to the user selection  
+- A checkbox enabling auto copying the selected command into the clipboard (note this is not enabled by default because has a noticeable visual refresh performance detriment)  
+- A folder selection widget to change which Cell2Fire simulator will be used
+- A way of overriding the normal Run command that creates a Instance folder with a copy of all data; this can be achieved by specifying the input and output folder, and then instead of pressing Run, press the [dev] button (nexto to kill and terminate ,on the Run tab of the normal dialog)
+
+## Main routes of experimenting
+
 - pyqgis: Open the python console, use the provided `extras/qgis_sandbox.py` to test commands  
 - IPythonQgis : Install the IPython Console plugin (`pip install qtconsole` is required)  
 - qgis plugin: The easiest way to get up to speed with developing QGIS plugins is using the 'Plugin Builder' plugin and build a template.  
 - cell2fire: Run the included examples, visit https://github.com/fire2a 
 
 ## Clone instead of installing
-The plugin and the simulator are developed in different repos so cloning both repos with one as a submodule is suggested
-    ```
+The plugin and the simulator are developed in different repos so cloning both repos with one as a submodule is suggested  
+
     # 0. QGIS >=3.1 LTR installed (opened once else the following directory won't exist)
 
     # 1. 
@@ -21,6 +34,8 @@ The plugin and the simulator are developed in different repos so cloning both re
     rm -r C2FSB
     git submodule init
     git submodule add git@github.com:fire2a/C2FSB.git C2FSB
+    cd C2FSB
+    git pull
     cd ..
 
     # 4. (Optional) virtual environment : Remember to activate it every time
@@ -35,13 +50,13 @@ The plugin and the simulator are developed in different repos so cloning both re
     pip install -r requirements.txt
 
     # 6. Compile
-    cd C2FSB/Cell2Fire
+    cd C2FSB/Cell2FireC
     sudo apt install g++ libboost-all-dev libeigen3-dev
     make
-    ```
-    If it fails check where your distribution installs eigen. Because the `makefile` assumes `EIGENDIR = /usr/include/eigen3/`  
-    Locate it with `nice find / -readable -type d -name eigen3 2>/dev/null`  
-    Then edit `makefile` accordingly & try again.  
+     
+    # If it fails check where your distribution installs eigen. Because the `makefile` assumes `EIGENDIR = /usr/include/eigen3/`  
+    # Locate it with `nice find / -readable -type d -name eigen3 2>/dev/null`  
+    # Then edit `makefile` accordingly & try again.  
 
 ## 1. Object Naming Convention
 To coordinate `C2FSB/Cell2Fire/ParseInputs.py`, QtDesigner and the plugin code (start at `fire2am.py`), the following standard must be followed: 
