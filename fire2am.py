@@ -113,7 +113,8 @@ class fire2amClass:
         self.geopackage = None
 
         # QProcess
-        self.proc_dir = str(Path(os.path.join( self.plugin_dir, 'C2FSB')))
+        #self.proc_dir = str(Path(os.path.join( self.plugin_dir, 'C2FSB')))
+        self.proc_dir = str(Path(self.plugin_dir)/'C2FSB')
         self.proc_exe = 'python3 main.py'
         self.proc = None
         self.name_state = { QProcess.ProcessState.NotRunning: 'Not running',
@@ -282,14 +283,14 @@ class fire2amClass:
                 self.dlg.layerComboBox_ignitionPoints.setLayer(layer)
         ''' weather file'''
         if apath := QgsProject.instance().absolutePath():
-            wfile = os.path.join( apath, 'Weather.csv' )
-            if os.path.isfile( wfile): 
-                self.dlg.fileWidget_weatherFile.setFilePath( wfile)
+            wfile = Path( apath, 'Weather.csv')
+            if wfile.is_file(): 
+                self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
                 self.dlg.radioButton_weatherFile.setChecked(True)
             ''' weather folder '''
-            wfolder = os.path.join( apath, 'Weathers' )
-            if os.path.isdir( wfolder): 
-                self.dlg.fileWidget_weatherFolder.setFilePath( wfolder)
+            wfolder = Path( apath, 'Weathers')
+            if wfolder.is_dir(): 
+                self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
                 self.dlg.radioButton_weatherFolder.setChecked(True)
             #self.dlg.args['nweathers'] = 0
         ''' default values '''
@@ -604,18 +605,20 @@ class fire2amClass:
         self.now_str = self.now.strftime('%y-%m-%d_%H-%M-%S')
         if self.first_start_argparse:
             ''' never opened '''
-            #args['InFolder'] = Path(os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep ))
-            #args['OutFolder'] = Path(os.path.abspath( os.path.join( args['InFolder'], 'results') ))
-            args['InFolder'] = os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) )+ os.path.sep 
-            args['OutFolder'] = os.path.abspath( os.path.join( args['InFolder'], 'results') )
+            args['InFolder'] = Path( self.project.absolutePath(), 'Instance'+self.now_str)
+            args['OutFolder'] = Path( args['InFolder'], 'results')
         else:
             ''' did opened '''
             args.update(self.argdlg.gen_args)
             ''' but didnt mention ioFolder '''
             if 'InFolder' not in self.argdlg.gen_args.keys():
-                args['InFolder'] = os.path.abspath( os.path.join( self.project.absolutePath(), 'Instance'+self.now_str) + os.path.sep)
+                args['InFolder'] = Path( self.project.absolutePath(), 'Instance'+self.now_str)
+            else:
+                args['InFolder'] = Path( args['InFolder'])
             if 'OutFolder' not in self.argdlg.gen_args.keys():
-                args['OutFolder'] = os.path.abspath( os.path.join( args['InFolder'], 'results'))
+                args['OutFolder'] = Path( args['InFolder'], 'results')
+            else:
+                args['OutFolder'] = Path( args['OutFolder'])
             self.proc_dir = self.argdlg.fileWidget_directory.filePath()
             self.proc_exe = self.argdlg.header
         log('make args step 4',args, level=0)
@@ -625,7 +628,10 @@ class fire2amClass:
                 if self.parser[key]['type'] is None:
                     gen_cmd += self.parser[key]['option_strings'][0] + ' '
                 else:
-                    gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + ' '
+                    if key!='InFolder':
+                        gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + ' '
+                    else:
+                        gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + os.sep + ' '
         self.args = args
         self.gen_cmd = gen_cmd 
         log('make args step 5',args, level=0)
@@ -883,8 +889,9 @@ class fire2amClass:
 
     def after_asciiDir2Int16MeanRaster(self, dirName, fileName, layerName, outfolder, geopackage, extent, crs, nodata = None):
         ''' get filelist '''
-        filelist = glob( outfolder+os.sep+dirName+os.sep+fileName+'[0-9]*.asc')
-        nsim = np.fromiter( re.findall( dirName+os.sep+fileName+'([0-9]+).asc', ' '.join( filelist)), dtype=int)
+        filelist = sorted( Path( outfolder, dirName).glob(fileName+'[0-9]*.asc'))
+        filestring = ' '.join([ f.stem for f in filelist ])
+        nsim = np.fromiter( re.findall( '([0-9]+)', filestring), dtype=int, count=len(filelist))
         asort = np.argsort( nsim)
         nsim = nsim[ asort]
         filelist = np.array( filelist)[ asort]
@@ -929,8 +936,9 @@ class fire2amClass:
             array2rasterFloat32( np.mean( data, axis=0), 'mean_flame_length', self.geopackage, extent, crs, nodata = 0.0)
         '''
         ''' get filelist '''
-        filelist = glob( outfolder+os.sep+dirName+os.sep+fileName+'[0-9]*.asc')
-        nsim = np.fromiter( re.findall( dirName+os.sep+fileName+'([0-9]+).asc', ' '.join( filelist)), dtype=int)
+        filelist = sorted( Path( outfolder, dirName).glob(fileName+'[0-9]*.asc'))
+        filestring = ' '.join([ f.stem for f in filelist ])
+        nsim = np.fromiter( re.findall( '([0-9]+)', filestring), dtype=int, count=len(filelist))
         asort = np.argsort( nsim)
         nsim = nsim[ asort]
         filelist = np.array( filelist)[ asort]
@@ -958,15 +966,14 @@ class fire2amClass:
         outfolder = self.args['OutFolder']
 
         ''' get ordered file list '''
-        filelist = glob( outfolder+os.sep+'Grids'+os.sep+'Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv')
-        numbers = np.fromiter( re.findall( 'Grids([0-9]+)'+os.sep+'ForestGrid([0-9]+).csv', 
-                                            ' '.join(filelist)), 
-                                dtype=[('x',int),('y',int)])
-        asort = np.argsort(numbers, order=('x','y'))[::-1]
-        numbers  = np.array([ [ n[0], n[1] ] for n in numbers ])[asort]
-        doindex = np.unique( numbers[:,0], return_index=True)[1]
-        filelist = np.array(filelist)[asort][doindex]
-        numbers = numbers[doindex]
+        # debug filelist = sorted( Path.cwd().joinpath('Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
+        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
+        filestring = ' '.join([ f'{f.parts[-2]}_{f.parts[-1]}' for f in filelist ])
+        numbers = np.fromiter( re.findall( 'Grids([0-9]+)_ForestGrid([0-9]+).csv', filestring), dtype=np.dtype((int,2)), count=len(filelist))
+        # get the last forest_grid for each grid_folder
+        doindex = np.unique( numbers[::-1][:,0], return_index=True)[1]
+        filelist = np.array(filelist)[::-1][doindex]
+        numbers = numbers[::-1][doindex]
         first, second = numbers.T
         width1stNum, width2ndNum = len(str(np.max(first))), len(str(np.max(second)))
 
@@ -1004,13 +1011,9 @@ class fire2amClass:
         outfolder = self.args['OutFolder']
 
         ''' get ordered file list '''
-        filelist = glob( outfolder+os.sep+'Grids'+os.sep+'Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv')
-        numbers = np.fromiter( re.findall( 'Grids([0-9]+)'+os.sep+'ForestGrid([0-9]+).csv', 
-                                            ' '.join(filelist)), 
-                                dtype=[('x',int),('y',int)])
-        asort = np.argsort(numbers, order=('x','y'))
-        numbers  = np.array([ [ n[0], n[1] ] for n in numbers ])[asort]
-        filelist = np.array(filelist)[asort]
+        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
+        filestring = ' '.join([ f'{f.parts[-2]}_{f.parts[-1]}' for f in filelist ])
+        numbers = np.fromiter( re.findall( 'Grids([0-9]+)_ForestGrid([0-9]+).csv', filestring), dtype=np.dtype((int,2)))
         first, second = numbers.T
         width1stNum, width2ndNum = len(str(np.max(first))), len(str(np.max(second)))
 
@@ -1033,19 +1036,19 @@ class fire2amClass:
         '''
 
         self.externalProcess_message('Making fire evolution polygons...')
-        weather_folder = os.path.join( self.args['OutFolder'], 'WeatherHistory')
-        weather_hist_file = os.path.join( weather_folder, 'WeatherHistory.csv')
+        weather_folder = self.args['OutFolder'] / 'WeatherHistory'
+        weather_hist_file = weather_folder / 'WeatherHistory.csv'
         ok = False
-        if os.path.isdir( weather_folder) and os.path.isfile( weather_hist_file):
+        if weather_folder.is_dir() and weather_hist_file.is_file():
             with open( weather_hist_file, 'r') as afile:
                 if weather_file := afile.readline():
-                    weather_file = weather_file[:-1]
-                    if os.path.isfile( weather_file):
+                    weather_file = Path(weather_file[:-1]) #erase last char \n
+                    if weather_file.is_file():
                         ok = True
         if not ok:
-            weather_file = os.path.join( self.args['InFolder'], 'Weather.csv')
+            weather_file = Path( self.args['InFolder'], 'Weather.csv')
 
-        if os.path.isfile( weather_file):
+        if weather_file.is_file():
             ds = read_csv( weather_file).datetime
             log('Weather.csv.datetime found with length',len(ds), level=1)
             while len(ds) < len(numbers):
