@@ -60,6 +60,18 @@ def getVector( layer) -> namedtuple:
                         id = np.array(fid),
                         len = len(fid) )
 
+from qgis.core import QgsVectorFileWriter
+import os.path
+def writeVectorLayer( vectorLayer, layerName, geopackage):
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = 'GPKG'
+    options.layerName = layerName
+    if geopackage.is_file():
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+    else:
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
+    return QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , str(geopackage), options)
+
 def mergeVectorLayers(layerList, ogrDB, tableName):
     ''' Has no output because writes into database
         processing.algorithmHelp('native:mergevectorlayers') -> Merge vector layers
@@ -126,7 +138,7 @@ def array2rasterInt16( data, name, geopackage, extent, crs, nodata = None):
     bites = QByteArray( data.tobytes() ) 
     block = QgsRasterBlock( Qgis.CInt16, w, h)
     block.setData( bites)
-    fw = QgsRasterFileWriter(geopackage)
+    fw = QgsRasterFileWriter(str(geopackage))
     fw.setOutputFormat('gpkg')
     fw.setCreateOptions(['RASTER_TABLE='+name, 'APPEND_SUBDATASET=YES'])
     provider = fw.createOneBandRaster( Qgis.Int16, w, h, extent, crs )
@@ -145,7 +157,7 @@ def array2rasterFloat32( data, name, geopackage, extent, crs, nodata = None):
     bites = QByteArray( dataf32.tobytes() ) 
     block = QgsRasterBlock( Qgis.Float32, w, h)
     block.setData( bites)
-    fw = QgsRasterFileWriter(geopackage)
+    fw = QgsRasterFileWriter(str(geopackage))
     fw.setOutputFormat('gpkg')
     fw.setCreateOptions(['RASTER_TABLE='+name, 'APPEND_SUBDATASET=YES'])
     provider = fw.createOneBandRaster( Qgis.Float32, w, h, extent, crs )
@@ -162,7 +174,7 @@ def array2rasterFloat64( data, name, geopackage, extent, crs, nodata = None):
     bites = QByteArray( dataf64.tobytes() ) 
     block = QgsRasterBlock( Qgis.Float64, w, h)
     block.setData( bites)
-    fw = QgsRasterFileWriter(geopackage)
+    fw = QgsRasterFileWriter(str(geopackage))
     fw.setOutputFormat('gpkg')
     fw.setCreateOptions(['RASTER_TABLE='+name, 'APPEND_SUBDATASET=YES'])
     provider = fw.createOneBandRaster( Qgis.Float64, w, h, extent, crs )

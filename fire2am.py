@@ -22,11 +22,12 @@
  *                                                                         *
  ***************************************************************************/
 """
+from .tmpTask import tmpTask
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QProcess, QVariant
 from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox, QCheckBox
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.Qt import Qt
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem #, QgsTask ,QgsApplication, QgsMessageLog 
+from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem, QgsTask ,QgsApplication, QgsMessageLog 
 import processing
 
 
@@ -36,13 +37,15 @@ from .img.resources import *
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_argparse import fire2amClassDialogArgparse
 from .fire2am_utils import check, aName, log, get_params, randomDataFrame
-from .qgis_utils import check_gdal_driver_name, matchPoints2Raster, matchRasterCellIds2points, array2rasterFloat32, array2rasterInt16, raster2polygon, mergeVectorLayers, rasterRenderInterpolatedPseudoColor
+from .qgis_utils import check_gdal_driver_name, matchPoints2Raster, matchRasterCellIds2points, array2rasterFloat32, array2rasterInt16, raster2polygon, mergeVectorLayers, rasterRenderInterpolatedPseudoColor, writeVectorLayer
 from .ParseInputs2 import Parser2
 
 from pandas import DataFrame, Timestamp, Series, read_csv, concat
 from datetime import datetime, timedelta
 from shlex import split as shlex_split
 from multiprocessing import cpu_count
+from functools import partial
+from pathlib import Path
 from argparse import Namespace
 from scipy import stats
 from shutil import copy
@@ -50,7 +53,6 @@ from glob import glob
 import numpy as np
 import os.path
 import re
-from pathlib import Path
 import sys
 
 # For debugging
@@ -113,13 +115,15 @@ class fire2amClass:
         self.geopackage = None
 
         # QProcess
-        #self.proc_dir = str(Path(os.path.join( self.plugin_dir, 'C2FSB')))
-        self.proc_dir = str(Path(self.plugin_dir)/'C2FSB')
+        self.proc_dir = str(Path(self.plugin_dir,'C2FSB'))
         self.proc_exe = 'python3 main.py'
         self.proc = None
         self.name_state = { QProcess.ProcessState.NotRunning: 'Not running',
                             QProcess.ProcessState.Starting: 'Starting',
                             QProcess.ProcessState.Running: 'Running' }
+        # QgsTask
+        self.task = {} 
+        self.taskManager = QgsApplication.taskManager()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -571,6 +575,11 @@ class fire2amClass:
         args.pop('windDirection')
         args.pop('windSpeed')
         args.pop('windConstLen')
+        # 1 landscape canopy logic
+        if any([ self.dlg.state['layerComboBox_cbd'],
+                 self.dlg.state['layerComboBox_cbh'],
+                 self.dlg.state['layerComboBox_ccf']]):
+            args['cros'] = True
         # 2a weather logic
         if self.dlg.state['radioButton_weatherFolder']:
             args['WeatherOpt'] = 'random'
@@ -703,7 +712,9 @@ class fire2amClass:
         if not self.checkMap():
             return
         self.makeArgs()
-        self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
+        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
+        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
+        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
         self.makeInstance()
         self.externalProcess_start()
 
@@ -761,8 +772,12 @@ class fire2amClass:
         self.updateProject()
         self.checkMap()
         header, arg_str, gen_args, workdir = self.argdlg.get()
-        self.args['OutFolder'] = gen_args['OutFolder']
-        self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
+        self.args['OutFolder'] = Path(gen_args['OutFolder'])
+        #TODO
+        #self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
+        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
+        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
+        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
 
         self.proc = QProcess()
         self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
@@ -794,14 +809,108 @@ class fire2amClass:
     def externalProcess_finished(self):
         self.externalProcess_message("Process finished.")
         self.proc = None
-        if not os.path.isdir( self.args['OutFolder'] ):
+        self.after()
+
+    def after(self):
+        ''' our folder not exists stop '''
+        if not self.args['OutFolder'].is_dir():
             log('results folder',self.args['OutFolder'], pre='Does NOT exist', msgBar=self.dlg.msgBar, level=3)
             return
-        if os.path.isfile( os.path.join(self.args['OutFolder'], 'LogFile.txt')):
-            log('Loading results started...', pre='Success!', level=4, msgBar=self.dlg.msgBar)
-            self.loadResults()
+
+        ''' args '''
+        baseLayer = self.dlg.state['layerComboBox_fuels']
+        if 'nsims' in self.args.keys():
+            nsims = self.args['nsims']
         else:
-            log('LogFile.txt not available', pre='No Results', level=3, msgBar=self.dlg.msgBar)
+            nsims = self.default_args['nsims']
+
+        ''' logFile '''
+        if Path(self.args['OutFolder'], 'LogFile.txt').is_file():
+            ''' open file '''
+            with open( self.args['OutFolder'] / 'LogFile.txt', 'rb', buffering=0) as afile:
+                logText = afile.read().decode()
+            ''' print into run text area '''
+            self.externalProcess_message( logText)
+            ''' process logfile '''
+            layerName = 'Ignition_Points'
+            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished, 
+                    logText=logText, layerName=layerName, baseLayer=baseLayer, out_gpkg=self.out_gpkg, stats_gpkg=self.stats_gpkg)
+            self.task['log'].taskCompleted.connect( partial( self.ui_addVectorLayer, self.stats_gpkg, layerName, 'points_layerStyle.qml'))
+            self.taskManager.addTask( self.task['log'])
+            # TODO
+            log('Loading results started...', pre='Success!', level=4, msgBar=self.dlg.msgBar)
+            #self.loadResults()
+        else:
+            log('LogFile.txt not available', pre='No simulation log', level=3, msgBar=self.dlg.msgBar)
+
+        ''' Grids '''
+        if Path(self.args['OutFolder'], 'Grids').is_dir():
+            log('processing', pre='Grids found!', level=4, msgBar=self.dlg.msgBar)
+        else:
+            log('Grids folder not available', pre='No Grids', level=3, msgBar=self.dlg.msgBar)
+
+        ''' crown scar '''
+        if 'cros' in self.args.keys() and 'OutCrown' in self.args.keys():
+            if Path(self.args['OutFolder'], 'CrownFire').is_dir(): 
+                log('processing', pre='CrownFire found!', level=4, msgBar=self.dlg.msgBar)
+                # TODO
+                #layerName = 'mean_crown_fire_scar'
+                #description='load_crown_fire'
+                #self.task['load_crown_fire'] = QgsTask.fromFunction( description, afterTask_loadAsc, on_finished=self.on_split_loadData, dirName = Path(self.args['OutFolder']) / 'CrownFire', fileName='Crown', dtype=np.uint16, layerName=layerName)
+                #self.taskManager.addTask( self.task['load_crown_fire'])
+            else:
+                log('folder not available', pre='No Crown Fire Scar', level=3, msgBar=self.dlg.msgBar)
+                
+        ''' crown fraction '''
+        if 'cros' in self.args.keys() and 'OutCrownConsumption' in self.args.keys():
+            if Path(self.args['OutFolder'], 'CrownFractionBurn').is_dir():
+                log('processing', pre='CrownFractionBurn found!', level=4, msgBar=self.dlg.msgBar)
+            else:
+                log('folder not available', pre='No Crown Fire Fuel Consumption', level=3, msgBar=self.dlg.msgBar)
+
+        ''' FlameLength '''
+        if 'OutFl' in self.args.keys():
+            if Path(self.args['OutFolder'], 'FlameLength').is_dir():
+                log('processing', pre='FlameLength found!', level=4, msgBar=self.dlg.msgBar)
+            else:
+                log('FlameLength folder not available', pre='No Flame Length', level=3, msgBar=self.dlg.msgBar)
+
+        ''' Byram_intensity '''
+        if 'OutIntensity' in self.args.keys():
+            if Path(self.args['OutFolder'], 'Intensity').is_dir():
+                log('processing', pre='ByramIntensity found!', level=4, msgBar=self.dlg.msgBar)
+            else:
+                log('Intensity folder not available', pre='No Byram Intensity', level=3, msgBar=self.dlg.msgBar)
+
+        ''' RateOfSpread '''
+        if 'OutRos' in self.args.keys(): 
+            if Path(self.args['OutFolder'], 'RateOfSpread').is_dir():
+                log('processing', pre='RateOfSpread found!', level=4, msgBar=self.dlg.msgBar)
+            else:
+                log('RateOfSpread folder not available', pre='No Hit ROS', level=3, msgBar=self.dlg.msgBar)
+
+        if nsims == 1:
+            self.load1sim()
+        else:
+            self.loadsims()
+        doit = [ 'OutFl' in self.args.keys(),
+                 'OutIntensity' in self.args.keys(),
+                 'OutRos' in self.args.keys(),
+                 'OutCrownConsumption' in self.args.keys()]
+        directories = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn']
+        filenames = ['FL', 'Intensity', 'ROSFile', 'Cfb']
+        names = ['flame_length', 'Byram_intensity', 'hit_ROS', 'crown_fire_fuel_consumption_ratio']
+        if nsims > 1:
+            names = ['mean_'+n for n in names ]
+
+        for i,(d,f,n) in filter( lambda x: doit[x[0]] , enumerate(zip(directories, filenames, names))):
+            self.after_asciiDir2float32MeanRaster(d, f, n, self.args['OutFolder'], self.geopackage, self.extent, self.crs, nodata=0.0)
+
+        if 'OutCrown' in self.args.keys():
+            layerName = 'crown_fire_scar'
+            if nsims > 1:
+                layerName = 'mean_'+layerName
+            self.after_asciiDir2Int16MeanRaster( 'CrownFire', 'Crown', layerName, self.args['OutFolder'], self.geopackage, self.extent, self.crs, nodata=0.0)
 
     def loadResults(self):
         ''' read LogFile.txt 
@@ -908,7 +1017,7 @@ class fire2amClass:
         self.externalProcess_message('Calculating '+layerName+'...')
         array2rasterFloat32( np.mean( data, axis=0, dtype=np.float32), layerName, self.geopackage, extent, crs, nodata = 0.0)
         ''' show layer '''
-        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':'+layerName, layerName)
+        layer = self.iface.addRasterLayer('GPKG:'+str(self.geopackage)+':'+layerName, layerName)
         minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
         maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
         rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
@@ -955,7 +1064,7 @@ class fire2amClass:
         self.externalProcess_message('Calculating '+layerName+'...')
         array2rasterFloat32( np.mean( data, axis=0, dtype=np.float32), layerName, self.geopackage, extent, crs, nodata = 0.0)
         ''' show layer '''
-        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':'+layerName, layerName)
+        layer = self.iface.addRasterLayer('GPKG:'+str(self.geopackage)+':'+layerName, layerName)
         minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
         maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
         rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
@@ -991,7 +1100,7 @@ class fire2amClass:
         array2rasterFloat32(  np.std( data, axis=0),  'std_prob_burn', self.geopackage, extent, crs, nodata = 0.0)
         self.externalProcess_message('Added std_prob_burn raster')
         self.externalProcess_message('Burn probabilities global statistics'+str(stats.describe(data, axis=None)))
-        layer = self.iface.addRasterLayer('GPKG:'+self.geopackage+':mean_prob_burn', 'mean_prob_burn')
+        layer = self.iface.addRasterLayer('GPKG:'+str(self.geopackage)+':mean_prob_burn', 'mean_prob_burn')
 
         minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
         maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
@@ -1067,7 +1176,7 @@ class fire2amClass:
         options.driverName = 'GPKG'
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'FireEvolution_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            rasterLayer = QgsRasterLayer('GPKG:'+self.geopackage+':r'+layerName, 'r'+layerName)
+            rasterLayer = QgsRasterLayer('GPKG:'+str(self.geopackage)+':r'+layerName, 'r'+layerName)
             tmp = processing.run('gdal:polygonize',
                        {'BAND' : 1, 
                         'EIGHT_CONNECTEDNESS' : False, 
@@ -1088,22 +1197,92 @@ class fire2amClass:
                 vectorLayer.dataProvider().changeAttributeValues({ feature.id() : attr})
             vectorLayer.commitChanges()
             # write
-            if os.path.exists(self.geopackage):
+            if self.geopackage.is_file():
                 options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
             else:
                 options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-            QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, self.geopackage, options)
+            QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, str(self.geopackage), options)
             del rasterLayer, vectorLayer
         ''' merge '''
         self.externalProcess_message('Merging fire evolution polygons...')
         polys=[]
         for i,(nsim,ngrid) in enumerate(numbers):
             layerName = 'vFireEvolution_'+str(nsim).zfill(width1stNum)+'_'+str(ngrid).zfill(width2ndNum)
-            polys += [ self.geopackage+'|layername='+layerName ]
+            polys += [ str(self.geopackage)+'|layername='+layerName ]
         mergedName = 'merged_Fire_Evolution'
-        mergeVectorLayers( polys, self.geopackage, mergedName )
-        vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+mergedName, mergedName, 'ogr')
+        mergeVectorLayers( polys, str(self.geopackage), mergedName )
+        vectorLayer = self.iface.addVectorLayer( str(self.geopackage)+'|layername='+mergedName, mergedName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+mergedName+'_layerStyle.qml'))
+
+    def on_finished(self, exception, value=None):
+        if not exception:
+            if value:
+                self.iface.messageBar().pushMessage('task finished & returned: {}'.format(value))
+            else:
+                self.iface.messageBar().pushMessage('task finished')
+        else:
+            self.iface.messageBar().pushMessage(str(exception))
+
+    def ui_addVectorLayer(self, geopackage, layerName, styleName):
+        vectorLayer = self.iface.addVectorLayer( str(geopackage)+'|layername='+layerName, layerName, 'ogr')
+        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+styleName))
 
     def slot_doit(self):
         self.iface.messageBar().pushSuccess(aName+': do it', 'push button pressed')
+        self.project = QgsProject().instance()
+        self.now = datetime(23,3,30,0,22,13 )
+        #self.now = datetime(23,3,27,12,3,30 )
+        self.makeArgs()
+        self.args['InFolder'] = Path('/home/fdo/dev/C2FSB/data/Vilopriu_2013/Instance23-03-30_00-22-13/')
+        self.args['OutFolder'] = self.args['InFolder'] / 'results'
+        self.out_gpkg = self.args['OutFolder'] / 'outputs.gpkg'
+        self.stats_gpkg = self.args['OutFolder'] / 'statistics.gpkg'
+        self.extent = self.dlg.state['layerComboBox_fuels'].extent()
+        self.crs = self.dlg.state['layerComboBox_fuels'].crs()
+        #self.after()
+        descr='tmpTaskDesc'
+        self.task[descr] = tmpTask(descr, self.iface, self.dlg, self.args, 'CrownFractionBurn', 'Cfb', 'CrownFractionBurn', self.out_gpkg, self.stats_gpkg, self.extent, self.crs)
+        self.taskManager.addTask( self.task[descr])
+
+
+def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg):
+    QgsMessageLog.logMessage('task {} Started processing output'.format(task.description()), aName, Qgis.Info)
+    task.setProgress(0)
+    ''' get [sim,cell] from regex '''
+    simulation, ignitionCell = np.fromiter( re.findall( 'ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)',
+                                                        logText), dtype=np.dtype((int,2)) ).T
+    ''' add each point feature '''
+    npts = len(ignitionCell)
+    feats = []
+    c=0
+    for s,(x,y) in zip(simulation, matchRasterCellIds2points( ignitionCell-1, baseLayer)):
+        f = QgsFeature()
+        f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+        f.setId(s)
+        feats += [ f]
+        task.setProgress(c/npts*80)
+        if task.isCanceled():
+            raise Exception('canceled')
+        c+=1
+    QgsMessageLog.logMessage('task {}\tadded feature points'.format(task.description()), aName, Qgis.Info)
+    ''' create vector layer '''
+    vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
+    vectorLayer.setCrs( baseLayer.crs())
+    ret, val = vectorLayer.dataProvider().addFeatures(feats)
+    if not ret:
+        raise Exception('creating vector layer in memory, added features'+str(val))
+    QgsMessageLog.logMessage('task {}\tcreated vector layer in memory, added features'.format(task.description()), aName, Qgis.Info)
+    task.setProgress(90)
+    ret, val = writeVectorLayer( vectorLayer, layerName, out_gpkg)
+    if ret != 0:
+        raise Exception('written to geopackage'+str(val))
+    ret, val = writeVectorLayer( vectorLayer, layerName, stats_gpkg)
+    if ret != 0:
+        raise Exception('written to geopackage'+str(val))
+    QgsMessageLog.logMessage('task {}\twriting to geopackage'.format(task.description()), aName, Qgis.Info)
+    task.setProgress(100)
+    QgsMessageLog.logMessage('task {} Ended'.format(task.description()), aName, Qgis.Info)
+
+def tmp():
+    pass
+    #pd.concat([df,df2],axis=1)
