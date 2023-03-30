@@ -11,13 +11,6 @@
 #include <unordered_set>
 #include <boost/algorithm/string.hpp>
 #include <set>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <iostream>
-#include <Windows.h>
-#include <direct.h>
-
  
 /*
  * Constructur
@@ -283,6 +276,5 @@ void CSVWriter::MakeDir(std::string pathPlot) {
 	// Default folder simOuts
 	const char * Dir;
 	Dir = pathPlot.c_str();
-	int ret = _mkdir(Dir);
-
+	system(Dir);
 }
