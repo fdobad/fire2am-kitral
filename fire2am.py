@@ -300,6 +300,11 @@ class fire2amClass:
         ''' default values '''
         self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.dlg.spinBox_nthreads.setMaximum(cpu_count())
+        ''' prepare stats table '''
+        st = stats.describe([0,1])
+        df = DataFrame( ('Name',*st._fields), index=('Name',*st._fields), columns=['Attributes'])
+        self.dlg.statdf = df
+        self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
 
     def connect_slots(self):
         ''' main '''
@@ -849,63 +854,25 @@ class fire2amClass:
         else:
             log('Grids folder not available', pre='No Grids', level=3, msgBar=self.dlg.msgBar)
 
-        ''' crown scar '''
-        if 'cros' in self.args.keys() and 'OutCrown' in self.args.keys():
-            if Path(self.args['OutFolder'], 'CrownFire').is_dir(): 
-                log('processing', pre='CrownFire found!', level=4, msgBar=self.dlg.msgBar)
-                # TODO
-                #layerName = 'mean_crown_fire_scar'
-                #description='load_crown_fire'
-                #self.task['load_crown_fire'] = QgsTask.fromFunction( description, afterTask_loadAsc, on_finished=self.on_split_loadData, dirName = Path(self.args['OutFolder']) / 'CrownFire', fileName='Crown', dtype=np.uint16, layerName=layerName)
-                #self.taskManager.addTask( self.task['load_crown_fire'])
-            else:
-                log('folder not available', pre='No Crown Fire Scar', level=3, msgBar=self.dlg.msgBar)
-                
-        ''' crown fraction '''
-        if 'cros' in self.args.keys() and 'OutCrownConsumption' in self.args.keys():
-            if Path(self.args['OutFolder'], 'CrownFractionBurn').is_dir():
-                log('processing', pre='CrownFractionBurn found!', level=4, msgBar=self.dlg.msgBar)
-            else:
-                log('folder not available', pre='No Crown Fire Fuel Consumption', level=3, msgBar=self.dlg.msgBar)
+        ''' stats '''
+        doit = ['OutFl'               in self.args.keys(),
+                'OutIntensity'        in self.args.keys(),
+                'OutRos'              in self.args.keys(),
+                'OutCrownConsumption' in self.args.keys() and 'cros' in self.args.keys(),
+                'OutCrown'            in self.args.keys() and 'cros' in self.args.keys()]
+        dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire'] 
+        fileNames = ['FL', 'Intensity', 'ROSFile', 'Cfb', 'Crown']
+        layerNames = ['Flame_Length', 'Byram_Intensity', 'Hit_RateOfSpread', 'CrownFire_FuelConsumptionRatio', 'CrownFire_Scar']
+        ''' background tasks '''
+        for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
+            if do:
+                if Path(self.args['OutFolder'], dn).is_dir(): 
+                    self.task[ln] = tmpTask( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
+                    self.taskManager.addTask( self.task[ln])
+                else:
+                    log('folder not available', pre='No '+dn, level=3, msgBar=self.dlg.msgBar)
 
-        ''' FlameLength '''
-        if 'OutFl' in self.args.keys():
-            if Path(self.args['OutFolder'], 'FlameLength').is_dir():
-                log('processing', pre='FlameLength found!', level=4, msgBar=self.dlg.msgBar)
-            else:
-                log('FlameLength folder not available', pre='No Flame Length', level=3, msgBar=self.dlg.msgBar)
-
-        ''' Byram_intensity '''
-        if 'OutIntensity' in self.args.keys():
-            if Path(self.args['OutFolder'], 'Intensity').is_dir():
-                log('processing', pre='ByramIntensity found!', level=4, msgBar=self.dlg.msgBar)
-            else:
-                log('Intensity folder not available', pre='No Byram Intensity', level=3, msgBar=self.dlg.msgBar)
-
-        ''' RateOfSpread '''
-        if 'OutRos' in self.args.keys(): 
-            if Path(self.args['OutFolder'], 'RateOfSpread').is_dir():
-                log('processing', pre='RateOfSpread found!', level=4, msgBar=self.dlg.msgBar)
-            else:
-                log('RateOfSpread folder not available', pre='No Hit ROS', level=3, msgBar=self.dlg.msgBar)
-
-        if nsims == 1:
-            self.load1sim()
-        else:
-            self.loadsims()
-        doit = [ 'OutFl' in self.args.keys(),
-                 'OutIntensity' in self.args.keys(),
-                 'OutRos' in self.args.keys(),
-                 'OutCrownConsumption' in self.args.keys()]
-        directories = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn']
-        filenames = ['FL', 'Intensity', 'ROSFile', 'Cfb']
-        names = ['flame_length', 'Byram_intensity', 'hit_ROS', 'crown_fire_fuel_consumption_ratio']
-        if nsims > 1:
-            names = ['mean_'+n for n in names ]
-
-        for i,(d,f,n) in filter( lambda x: doit[x[0]] , enumerate(zip(directories, filenames, names))):
-            self.after_asciiDir2float32MeanRaster(d, f, n, self.args['OutFolder'], self.geopackage, self.extent, self.crs, nodata=0.0)
-
+    def stop(self):
         if 'OutCrown' in self.args.keys():
             layerName = 'crown_fire_scar'
             if nsims > 1:
@@ -1240,10 +1207,10 @@ class fire2amClass:
         self.extent = self.dlg.state['layerComboBox_fuels'].extent()
         self.crs = self.dlg.state['layerComboBox_fuels'].crs()
         #self.after()
+        # t
         descr='tmpTaskDesc'
         self.task[descr] = tmpTask(descr, self.iface, self.dlg, self.args, 'CrownFractionBurn', 'Cfb', 'CrownFractionBurn', self.out_gpkg, self.stats_gpkg, self.extent, self.crs)
         self.taskManager.addTask( self.task[descr])
-
 
 def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg):
     QgsMessageLog.logMessage('task {} Started processing output'.format(task.description()), aName, Qgis.Info)
@@ -1273,9 +1240,12 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg)
         raise Exception('creating vector layer in memory, added features'+str(val))
     QgsMessageLog.logMessage('task {}\tcreated vector layer in memory, added features'.format(task.description()), aName, Qgis.Info)
     task.setProgress(90)
+    '''
+    # TODO write to every gpkg
     ret, val = writeVectorLayer( vectorLayer, layerName, out_gpkg)
     if ret != 0:
         raise Exception('written to geopackage'+str(val))
+    '''
     ret, val = writeVectorLayer( vectorLayer, layerName, stats_gpkg)
     if ret != 0:
         raise Exception('written to geopackage'+str(val))
@@ -1283,6 +1253,3 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg)
     task.setProgress(100)
     QgsMessageLog.logMessage('task {} Ended'.format(task.description()), aName, Qgis.Info)
 
-def tmp():
-    pass
-    #pd.concat([df,df2],axis=1)

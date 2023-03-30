@@ -70,6 +70,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.state = {}
         self.updateState()
         self.args = {}
+        self.statdf = None
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 
