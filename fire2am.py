@@ -22,7 +22,6 @@
  *                                                                         *
  ***************************************************************************/
 """
-from .tmpTask import tmpTask
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QProcess, QVariant
 from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox, QCheckBox
 from qgis.PyQt.QtGui import QIcon
@@ -36,9 +35,11 @@ from .img.resources import *
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_utils import check, aName, log, get_params, randomDataFrame
+from .fire2am_utils import aName, log, get_params, randomDataFrame
+from .fire2am_utils import check as fdoCheck
 from .qgis_utils import check_gdal_driver_name, matchPoints2Raster, matchRasterCellIds2points, array2rasterFloat32, array2rasterInt16, raster2polygon, mergeVectorLayers, rasterRenderInterpolatedPseudoColor, writeVectorLayer
 from .ParseInputs2 import Parser2
+from .fire2am_bkgdTask import after_asciiDir, after_ForestGrid
 
 from pandas import DataFrame, Timestamp, Series, read_csv, concat
 from datetime import datetime, timedelta
@@ -46,14 +47,14 @@ from shlex import split as shlex_split
 from multiprocessing import cpu_count
 from functools import partial
 from pathlib import Path
-from argparse import Namespace
 from scipy import stats
 from shutil import copy
 from glob import glob
 import numpy as np
+from os import sep
 import os.path
-import re
 import sys
+import re
 
 # For debugging
 #import pdb
@@ -439,7 +440,7 @@ class fire2amClass:
             ''' copy weather folder '''
             dst = os.path.join( self.args['InFolder'],'Weathers')
             os.mkdir(dst)
-            for filename in glob( self.dlg.state['fileWidget_weatherFolder']+os.sep+'Weather[0-9]*.csv'):
+            for filename in glob( self.dlg.state['fileWidget_weatherFolder']+sep+'Weather[0-9]*.csv'):
                 copy( filename, dst)
             log( 'weather folder copied', level=0, msgBar=self.dlg.msgBar)
         ''' 
@@ -454,9 +455,11 @@ class fire2amClass:
             if not Ncell:
                 log( 'for %s into fuel raster (check crs)'%points.name(), pre='No matching point', level=3, msgBar=self.dlg.msgBar)
                 return
-            data = { 'Year':None, 'Ncell': Ncell }
+            # TODO simulator accepts more than 1 point
+            #data = { 'Year':None, 'Ncell': Ncell }
+            data = { 'Year':1, 'Ncell': [Ncell[0]] }
             df = DataFrame.from_dict( data)
-            df.fillna(1, inplace=True)
+            #df.fillna(1, inplace=True)
             df.to_csv( os.path.join( self.args['InFolder'],'Ignitions.csv'), header=True, index=False)
             log( 'written', pre='Ignition points', level=0, msgBar=self.dlg.msgBar)
 
@@ -495,13 +498,16 @@ class fire2amClass:
                 warn_reject('Not with Points!')
                 return
             pts = [ f.geometry() for f in layer.getFeatures() \
-                    if check( f, 'geometry') and \
+                    if fdoCheck( f, 'geometry') and \
                        f.geometry().wkbType() == QgsWkbTypes.Point]
-            self.dlg.args['num_ignitions'] = pts
-            if len(pts) == 0:
+            num_pts = len(pts)
+            if num_pts == 0:
                 warn_reject('0 points found!')
                 return
-            log( 'Read from %s layer'%layer.name(), pre='%s points'%len(pts), level=4, msgBar=self.dlg.msgBar)
+            if num_pts == 1:
+                log( 'from %s layer '%layer.name(), pre='Read point!', level=4, msgBar=self.dlg.msgBar)
+            if num_pts > 1:
+                log('Only the first one will be used! from %s layer'%layer.name(), pre='>1 point!', level=2, msgBar=self.dlg.msgBar)
             self.dlg.radioButton_ignitionPoints.setChecked(True)
         except Exception as e:
             log( e, pre='Ignition Point layer exception!', level=2, msgBar=self.dlg.msgBar)
@@ -588,6 +594,8 @@ class fire2amClass:
         # 2a weather logic
         if self.dlg.state['radioButton_weatherFolder']:
             args['WeatherOpt'] = 'random'
+            args['nweathers'] = self.dlg.args['nweathers']
+            #len(list(Path(self.dlg.state['fileWidget_weatherFolder']).glob('Weather[0-9]*.csv')))
         elif self.dlg.state['radioButton_weatherFile'] or \
              self.dlg.state['radioButton_weatherConstant']:
              args['WeatherOpt'] = 'rows'
@@ -645,7 +653,7 @@ class fire2amClass:
                     if key!='InFolder':
                         gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + ' '
                     else:
-                        gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + os.sep + ' '
+                        gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + sep + ' '
         self.args = args
         self.gen_cmd = gen_cmd 
         log('make args step 5',args, level=0)
@@ -867,7 +875,7 @@ class fire2amClass:
         for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
             if do:
                 if Path(self.args['OutFolder'], dn).is_dir(): 
-                    self.task[ln] = tmpTask( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
+                    self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
                     self.taskManager.addTask( self.task[ln])
                 else:
                     log('folder not available', pre='No '+dn, level=3, msgBar=self.dlg.msgBar)
@@ -960,7 +968,7 @@ class fire2amClass:
         ret, val = QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , self.geopackage, options)
         log( ret, val, layerName, pre = 'vectorLayer writeAsVectorFormat', level=1)
         vectorLayer = self.iface.addVectorLayer( self.geopackage+'|layername='+layerName, layerName, 'ogr')
-        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+'points_layerStyle.qml'))
+        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'points_layerStyle.qml'))
         log('finished loading results', pre='Done!', level=4, msgBar=self.dlg.msgBar)
 
     def after_asciiDir2Int16MeanRaster(self, dirName, fileName, layerName, outfolder, geopackage, extent, crs, nodata = None):
@@ -1007,8 +1015,8 @@ class fire2amClass:
             import numpy as np
             import re
             outfolder = '/home/fdo/dev/Zona21/Instance23-03-14_15-49-22/results'
-            filelist = glob( outfolder+os.sep+'FlameLength'+os.sep+'FL[0-9]*.asc')
-            nsim = np.fromiter( re.findall( 'FlameLength'+os.sep+'FL([0-9]+).asc', ' '.join(filelist)), dtype=int)
+            filelist = glob( outfolder+sep+'FlameLength'+sep+'FL[0-9]*.asc')
+            nsim = np.fromiter( re.findall( 'FlameLength'+sep+'FL([0-9]+).asc', ' '.join(filelist)), dtype=int)
             array2rasterFloat32( np.mean( data, axis=0), 'mean_flame_length', self.geopackage, extent, crs, nodata = 0.0)
         '''
         ''' get filelist '''
@@ -1042,8 +1050,8 @@ class fire2amClass:
         outfolder = self.args['OutFolder']
 
         ''' get ordered file list '''
-        # debug filelist = sorted( Path.cwd().joinpath('Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
-        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
+        # debug filelist = sorted( Path.cwd().joinpath('Grids').glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
+        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
         filestring = ' '.join([ f'{f.parts[-2]}_{f.parts[-1]}' for f in filelist ])
         numbers = np.fromiter( re.findall( 'Grids([0-9]+)_ForestGrid([0-9]+).csv', filestring), dtype=np.dtype((int,2)), count=len(filelist))
         # get the last forest_grid for each grid_folder
@@ -1087,7 +1095,7 @@ class fire2amClass:
         outfolder = self.args['OutFolder']
 
         ''' get ordered file list '''
-        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+os.sep+'ForestGrid[0-9]*.csv'))
+        filelist = sorted( Path( outfolder, 'Grids').glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
         filestring = ' '.join([ f'{f.parts[-2]}_{f.parts[-1]}' for f in filelist ])
         numbers = np.fromiter( re.findall( 'Grids([0-9]+)_ForestGrid([0-9]+).csv', filestring), dtype=np.dtype((int,2)))
         first, second = numbers.T
@@ -1179,7 +1187,7 @@ class fire2amClass:
         mergedName = 'merged_Fire_Evolution'
         mergeVectorLayers( polys, str(self.geopackage), mergedName )
         vectorLayer = self.iface.addVectorLayer( str(self.geopackage)+'|layername='+mergedName, mergedName, 'ogr')
-        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+mergedName+'_layerStyle.qml'))
+        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+mergedName+'_layerStyle.qml'))
 
     def on_finished(self, exception, value=None):
         if not exception:
@@ -1192,25 +1200,109 @@ class fire2amClass:
 
     def ui_addVectorLayer(self, geopackage, layerName, styleName):
         vectorLayer = self.iface.addVectorLayer( str(geopackage)+'|layername='+layerName, layerName, 'ogr')
-        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+os.sep+styleName))
+        vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+styleName))
 
     def slot_doit(self):
         self.iface.messageBar().pushSuccess(aName+': do it', 'push button pressed')
         self.project = QgsProject().instance()
-        self.now = datetime(23,3,30,0,22,13 )
-        #self.now = datetime(23,3,27,12,3,30 )
+        #self.now = datetime(23,3,30,0,22,13 )
+        self.now = datetime(23,3,30,12,30,9)
         self.makeArgs()
-        self.args['InFolder'] = Path('/home/fdo/dev/C2FSB/data/Vilopriu_2013/Instance23-03-30_00-22-13/')
+        #self.args['InFolder'] = Path('/home/fdo/dev/C2FSB/data/Vilopriu_2013/Instance23-03-30_00-22-13/')
+        self.args['InFolder'] = Path('/home/fdo/dev/C2FSB/data/Vilopriu_2013/Instance23-03-30_12-30-09/')
         self.args['OutFolder'] = self.args['InFolder'] / 'results'
-        self.out_gpkg = self.args['OutFolder'] / 'outputs.gpkg'
+        self.out_gpkg = self.args['OutFolder'] / 'Fire_Scar.gpkg'
         self.stats_gpkg = self.args['OutFolder'] / 'statistics.gpkg'
         self.extent = self.dlg.state['layerComboBox_fuels'].extent()
         self.crs = self.dlg.state['layerComboBox_fuels'].crs()
         #self.after()
         # t
-        descr='tmpTaskDesc'
-        self.task[descr] = tmpTask(descr, self.iface, self.dlg, self.args, 'CrownFractionBurn', 'Cfb', 'CrownFractionBurn', self.out_gpkg, self.stats_gpkg, self.extent, self.crs)
+        '''
+        descr='after_ForestGrid'
+        self.task[descr] = after_ForestGrid(descr, self.iface, self.dlg, self.args, 'Fire_Scar', self.out_gpkg, self.stats_gpkg, self.extent, self.crs)
         self.taskManager.addTask( self.task[descr])
+        '''
+        #filelist = sorted( self.directory.glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
+        #from pathlib import Path
+        #from os import sep
+        ##from re import findall, match
+        #import re
+        #import numpy as np
+
+        # cant trust folder and files are ordered
+        filelist = list(Path(self.args['OutFolder'],'Grids').glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
+        #filelist = list( (Path.cwd()/'Grids').glob('Grids[0-9]*'+sep+'ForestGrid[0-9]*.csv'))
+        filestring = ' '.join([ f'{f.parts[-2]}_{f.parts[-1]}' for f in filelist ])
+        numbers = np.fromiter( re.findall( 'Grids([0-9]+)_ForestGrid([0-9]+).csv', filestring), dtype=[('x',int),('y',int)], count=len(filelist))
+        # sorts ascending
+        asort = np.argsort(numbers, order=('x','y'))
+        # descending + unique gives last grid index
+        numbers = np.array([ [n[0],n[1]] for n in numbers ])[asort][::-1]
+        filelist = np.array(filelist)[asort][::-1]
+        # get
+        uniques, indexes, counts = np.unique( numbers[:,0], return_index=True, return_counts=True)
+        sim_num = uniques[::-1]
+        final_grid_idx = indexes[::-1]
+        total_grids = counts[::-1]
+
+        ''' last of every sim'''
+        #numbers[final_grid_idx]
+        #filelist[final_grid_idx]
+
+        total = len(filelist)
+        ''' sim splited '''
+        sim_idx = np.split( range(total),final_grid_idx)[1:]
+        sim_nu = np.split( numbers,final_grid_idx)[1:]
+        sim_fi = np.split( filelist,final_grid_idx)[1:]
+        for s,tg,nu,fi,ii in zip(sim_num,total_grids,sim_nu,sim_fi,sim_idx):
+        #    print('sim',s,'total grids',tg)
+        #    #print('\tnu',nu,'\tfi',fi)
+        #    print('\tnu',nu.T,'\tfi',[ (f.parts[-2],f.stem) for f in fi])
+            assert np.all(fi == filelist[ii])
+            assert np.all(nu == numbers[ii])
+        ''' get all data'''
+        data = []
+        for afile in filelist:
+            data += [ np.loadtxt( afile , delimiter=',', dtype=np.int8)]
+        data = np.array(data)
+        ''' get burn prob '''
+        if len(sim_num) > 1:
+            meanData = np.mean( data[final_grid_idx], axis=0, dtype=np.float32)
+            name_prefix = 'mean'
+        else:
+            meanData = data[final_grid_idx]
+            name_prefix = ''
+        layerName = name_prefix+'_FireScar'
+        array2rasterFloat32( meanData, layerName, self.stats_gpkg, self.extent, self.crs, nodata = 0.0)
+        layer = self.iface.addRasterLayer('GPKG:'+str(self.stats_gpkg)+':'+layerName, layerName)
+        minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+        maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+        rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+        st = stats.describe( meanData, axis=None)
+        df = DataFrame( (layerName,*st), index=('Name',*st._fields), columns=[layerName])
+        bf = self.dlg.statdf
+        df = concat([bf,df], axis=1)
+        self.dlg.statdf = df
+        self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+
+        ''' for each sim calc isochrones
+        array 2 raster 
+        data[i] -> raster[i]
+        load weather 
+        	!e : create
+        	file : enlarge ?
+        	history : select : enlarge?
+        raster 2 poly
+        polys add attr datetime
+        merge poly
+        show mergedPoly
+        #for s,tg,nu,fi,ii in zip(sim_num,total_grids,sim_nu,sim_fi,sim_idx):
+            print('sim',s)
+            for f in fi:
+                array2raster
+        '''
+
+
 
 def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg):
     QgsMessageLog.logMessage('task {} Started processing output'.format(task.description()), aName, Qgis.Info)
