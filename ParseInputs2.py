@@ -325,7 +325,7 @@ def Parser2():
     
     # Floats
     fire.add_argument("--Fire-Period-Length",
-                        help="Fire Period length in minutes (needed for ROS computations). Default 60",
+                        help="Fire Period length in minutes (needed for ROS computations). Default 1.0",
                         dest="input_PeriodLen",
                         type=float,
                         default=1.0)                    
