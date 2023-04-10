@@ -1,4 +1,95 @@
 
+
+from itertools import islice
+
+
+def csv2ascList( file_list = ['ForestGrid00.csv','ForestGrid01.csv'], header_file = 'elev.asc' ):
+    with open( header_file, 'r') as afile:
+        header = list(islice(afile, 6))
+    for afile in file_list:
+        fname = afile[:-4]
+        csv2ascFile( in_file = afile, header = header, out_file = fname+'.asc')
+
+def csv2ascFile( in_file = 'ForestGrid00.csv', 
+        header = ['ncols 508\n', 'nrows 610\n', 'xllcorner 494272.38261041\n', 'yllcorner 4652115.6527613\n', 'cellsize 20\n', 'NODATA_value -9999\n'],
+        out_file = 'ForestGrid00.asc'):
+    
+    with open(out_file, 'w') as outfile:
+        outfile.writelines(header)
+
+    with open( in_file, 'rb', buffering=0) as infile:
+        with open(out_file, 'ab') as outfile:
+            outfile.write(infile.read().replace(b',',b' '))
+
+def clipRasterLayerByMask(raster, polygon, nodata=-32768):
+    ''' Algorithm 'Clip raster by mask layer' 
+    gdal:cliprasterbymasklayer -> Clip raster by mask layer
+    make sure both layers are saved to disk, & same CRS
+    adds new layer to project
+    returns filepath str
+    '''
+    outname = raster.name() + '_clippedBy_' + polygon.name() + '.asc'
+    outname = outname.replace(' ','')
+    outpath = QgsProject().instance().absolutePath()
+    out = os.path.join( outpath, outname )
+
+    tmp = processing.run('gdal:cliprasterbymasklayer', 
+            { 'ALPHA_BAND' : False, 'CROP_TO_CUTLINE' : True, 'DATA_TYPE' : 0, 'EXTRA' : '', 'INPUT' : raster, 'KEEP_RESOLUTION' : True, 'MASK' : polygon, 'MULTITHREADING' : True, 'NODATA' : nodata, 'OPTIONS' : '', 'OUTPUT' : out, 'SET_RESOLUTION' : False, 'SOURCE_CRS' : raster.crs(), 'TARGET_CRS' : raster.crs(), 'X_RESOLUTION' : None, 'Y_RESOLUTION' : None })
+    iface.addRasterLayer( out, outname)
+    return tmp['OUTPUT'] 
+
+def clipVectorByPolygon(layer, polygon):
+    ''' gdal:clipvectorbypolygon
+    adds new layer to project
+    returns filepath str
+    '''
+    outname = layer.name() + '_clippedBy_' + polygon.name() + '.shp'
+    outname = outname.replace(' ','')
+    outpath = QgsProject().instance().absolutePath()
+    out = os.path.join( outpath, outname )
+    tmp = processing.run('gdal:clipvectorbypolygon', 
+            { 'INPUT' : layer, 'MASK' : polygon, 'OPTIONS' : '', 'OUTPUT' : out })
+            #{ 'INPUT' : layer, 'MASK' : polygon, 'OPTIONS' : '', 'OUTPUT' : 'TEMPORARY_OUTPUT' })
+    iface.addVectorLayer(out , ' ', 'ogr') #layer.providerType())
+    return tmp['OUTPUT'] 
+
+def clipVectorLayerByExtent(layer, extent, clip=True):
+    '''processing.algorithmHelp('native:extractbyextent')
+    Extract/clip by extent
+             'EXTENT' : extent, #'-70.651805555556,-70.60828703703399,-33.434398148148,-33.411249999998', 
+             'INPUT' : layer, #'/home/fdo/dev/fire2am/userFolder/ignitions.shp', 
+    '''
+    tmp = processing.run('native:extractbyextent', 
+            {'CLIP' : clip, 
+             'EXTENT' : extent,
+             'INPUT' : layer,
+             'OUTPUT' : 'TEMPORARY_OUTPUT' })
+    return tmp['OUTPUT'] 
+
+def pixelstopolygons(layer): 
+    '''processing.algorithmHelp('native:pixelstopolygons')
+        TODO add params , band=1, field_name='VALUE')
+    '''
+    tmp = processing.run('native:pixelstopolygons', 
+               {'INPUT_RASTER' : layer, 
+                'RASTER_BAND' : 1,
+                'FIELD_NAME' : 'VALUE', 
+                'OUTPUT' : 'TEMPORARY_OUTPUT' })
+    return tmp['OUTPUT'] 
+
+def listAllProcessingAlgorithms():
+    ''' processing must be added to PYTHONPATH
+    import processing
+    or 
+    from qgis import processing
+
+    get help string example:
+        processing.algorithmHelp('native:pixelstopolygons')
+
+    'native:native:adduniquevalueindexfield' NOT FOUND
+    '''
+    for alg in QgsApplication.processingRegistry().algorithms():
+            print(alg.id(), "->", alg.displayName())
 import os
 from .fire2am_utils import check, aName, log, get_params, , randomDataFrame, csv2rasterInt16, mergeVectorLayers, cellIds2matchingLayer
 from .qgis_utils import check_gdal_driver_name, id2uglyId, uglyId2xy, matchPointLayer2RasterLayer
