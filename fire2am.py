@@ -22,40 +22,51 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QProcess, QVariant
-from qgis.PyQt.QtWidgets import QAction, QDoubleSpinBox, QSpinBox, QCheckBox
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.Qt import Qt
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayerType, QgsVectorLayer, QgsRasterLayer, QgsField, QgsVectorFileWriter, QgsFeature, QgsGeometry, QgsPointXY, QgsRasterBandStats, QgsCoordinateReferenceSystem, QgsTask ,QgsApplication, QgsMessageLog, QgsRectangle
+import os.path
+import re
+import sys
+from datetime import datetime, timedelta
+from functools import partial
+from glob import glob
+from multiprocessing import cpu_count
+from os import sep
+from pathlib import Path
+from shlex import split as shlex_split
+from shutil import copy
+
+from scipy import stats
+import numpy as np
 import processing
 
+from pandas import DataFrame, Series, Timestamp, concat, read_csv
+# pylint: disable=no-name-in-module
+from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
+                       QgsFeature, QgsField, QgsGeometry, QgsMapLayerType,
+                       QgsMessageLog, QgsPointXY, QgsProject,
+                       QgsRasterBandStats, QgsRasterLayer,
+                       QgsTask, QgsVectorFileWriter, QgsVectorLayer,
+                       QgsWkbTypes)
+from qgis.PyQt.Qt import Qt
+from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings,
+                              QTranslator, QVariant)
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
+# pylint: enable=no-name-in-module
 
-# Initialize Qt resources from file resources.py
-from .img.resources import *
+from .fire2am_argparse import fire2amClassDialogArgparse
+from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile2)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
-from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_utils import aName, log, get_params, randomDataFrame
+from .fire2am_utils import aName
 from .fire2am_utils import check as fdoCheck
-from .qgis_utils import check_gdal_driver_name, matchPoints2Raster, matchRasterCellIds2points, array2rasterFloat32, array2rasterInt16, raster2polygon, mergeVectorLayers, rasterRenderInterpolatedPseudoColor, writeVectorLayer
+from .fire2am_utils import get_params, log #, randomDataFrame
+# Initialize Qt resources from file resources.py
+from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
-from .fire2am_bkgdTask import *
-#after_asciiDir, after_ForestGrid, afterTask_logFile2
-
-from pandas import DataFrame, Timestamp, Series, read_csv, concat
-from datetime import datetime, timedelta
-from shlex import split as shlex_split
-from multiprocessing import cpu_count
-from functools import partial
-from pathlib import Path
-from scipy import stats
-from shutil import copy
-from glob import glob
-import numpy as np
-from os import sep
-import os.path
-import sys
-import re
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+                         check_gdal_driver_name, matchPoints2Raster,
+                         matchRasterCellIds2points, mergeVectorLayers,
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
 
 # For debugging
 #import pdb
@@ -65,10 +76,10 @@ import re
 #pdb.set_trace()
 # This line enters into interactive
 #(Pdb) !import code; code.interact(local=dict(globals(), **locals()))
-
 # ?
 #import warnings
 #warnings.filterwarnings("ignore",message='Warning: QCoreApplication::exec: The event loop is already running')
+
 
 class fire2amClass:
     """QGIS Plugin Implementation."""
