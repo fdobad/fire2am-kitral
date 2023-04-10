@@ -1,9 +1,4 @@
-from qgis.core import QgsVectorDataProvider, QgsField, QgsGeometry #, QgsFeatureRequest
-from qgis.PyQt.QtCore import QVariant
-from collections import namedtuple
-from datetime import datetime
-import numpy as np
-import processing
+#!/bin/env python3
 ''' 
     # v1 for standalone use 
     from qgis.testing import start_app
@@ -13,17 +8,39 @@ import processing
     app = QgsApplication([], True)
     app.initQgis()
 
-    # processing is in PYTHONPATH 
+    # processing must be in PYTHONPATH 
     <module 'processing' from '/usr/share/qgis/python/plugins/processing/__init__.py'>
 '''
+import os.path
+from collections import namedtuple
+
+import numpy as np
+import processing
+from osgeo import gdal
+# pylint: disable=no-name-in-module
+from qgis.core import (Qgis, QgsColorRampShader,  # , QgsFeatureRequest
+                       QgsField, QgsGeometry, QgsRasterBlock,
+                       QgsRasterFileWriter, QgsRasterLayer, QgsRasterShader,
+                       QgsSingleBandPseudoColorRenderer, QgsVectorDataProvider,
+                       QgsVectorFileWriter, QgsVectorLayer)
+from qgis.PyQt.QtCore import QByteArray, QVariant
+from qgis.PyQt.QtGui import QColor
+# pylint: enable=no-name-in-module
+
+from .fire2am_utils import log
+
 
 def pointsInRaster( points, raster):
+    ''' returns a numpy array with point.id 
+        and a boolean indicating if point is inside the raster extent '''
     extent = raster.extent()
-    return np.array([ [f.id(),
+    return np.array([ [p.id(),
                        extent.contains( p.geometry().asPoint())]
                        for p in points.getFeatures() ])
 
 def getPoints( layer):
+    ''' gets Vector layer features, transforms it
+        geometry -> point -> px, py '''
     points = [ f.geometry().asPoint() for f in layer.getFeatures() ]
     return [ [p.x(),p.y()] for p in points ]
 
@@ -39,9 +56,7 @@ def getRaster(layer):
     qByteArray = block.data()
     npArr = np.frombuffer( qByteArray)  #,dtype=float)
     return npArr.reshape( (layer.height(),layer.width()))
-    
-from collections import namedtuple
-import numpy as np
+
 def getVector( layer) -> namedtuple:
     ''' returns an object with attributes field type attr geom id len
     '''
@@ -60,9 +75,8 @@ def getVector( layer) -> namedtuple:
                         id = np.array(fid),
                         len = len(fid) )
 
-from qgis.core import QgsVectorFileWriter
-import os.path
 def writeVectorLayer( vectorLayer, layerName, geopackage):
+    ''' TODO warning writeAsVectorFormat deprecated '''
     options = QgsVectorFileWriter.SaveVectorOptions()
     options.driverName = 'GPKG'
     options.layerName = layerName
@@ -84,9 +98,8 @@ def mergeVectorLayers(layerList, ogrDB, tableName):
             { 'CRS' : None, 'LAYERS' : layerList, 'OUTPUT' : 'ogr:dbname=\''+ogrDB+'\' table=\"'+tableName+'\" (geom) sql=' })
     return tmp
 
-from qgis.PyQt.QtGui import QColor
-from qgis.core import QgsColorRampShader, QgsRasterShader, QgsSingleBandPseudoColorRenderer
 def rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue, minColor=(68,1,84), maxColor=(253,231,37)):
+    ''' colorizes a layer '''
     fcn = QgsColorRampShader()
     fcn.setColorRampType(QgsColorRampShader.Interpolated)
     lst = [ QgsColorRampShader.ColorRampItem(minValue, QColor(*minColor)),
@@ -98,12 +111,8 @@ def rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue, minColor=(68,
     layer.setRenderer(renderer)
     layer.triggerRepaint()
 
-from qgis.core import QgsVectorFileWriter, QgsRasterLayer, QgsVectorLayer
-import processing
-from .fire2am_utils import log
-import os.path
 def raster2polygon( layerName, geopackage):
-    ''' loads a raster layer writes it as vector layer in a geopackage
+    ''' loads a raster layer writes it as vector layer into geopackages
         raster is named "r"+layerName
         vector is named "v"+layerName
     '''
@@ -130,9 +139,8 @@ def raster2polygon( layerName, geopackage):
     os.remove(tmp)
     del rasterLayer, vectorLayer, options, tmp
 
-from qgis.PyQt.QtCore import QByteArray
-from qgis.core import Qgis, QgsRasterFileWriter, QgsRasterBlock
 def array2rasterInt16( data, name, geopackage, extent, crs, nodata = None):
+    ''' numpy array to gpkg casts to name '''
     data = np.int16(data)
     h,w = data.shape
     bites = QByteArray( data.tobytes() ) 
@@ -149,9 +157,8 @@ def array2rasterInt16( data, name, geopackage, extent, crs, nodata = None):
     provider.setEditable(False)
     del provider, fw, block
 
-from qgis.PyQt.QtCore import QByteArray
-from qgis.core import Qgis, QgsRasterBlock, QgsRasterFileWriter
 def array2rasterFloat32( data, name, geopackage, extent, crs, nodata = None):
+    ''' numpy array to gpkg casts to name '''
     dataf32 = np.float32( data)
     h,w = dataf32.shape
     bites = QByteArray( dataf32.tobytes() ) 
@@ -169,6 +176,7 @@ def array2rasterFloat32( data, name, geopackage, extent, crs, nodata = None):
     del provider, fw, block
 
 def array2rasterFloat64( data, name, geopackage, extent, crs, nodata = None):
+    ''' numpy array to gpkg casts to name '''
     dataf64 = np.float64( data)
     h,w = dataf64.shape
     bites = QByteArray( dataf64.tobytes() ) 
@@ -210,6 +218,8 @@ def matchPoints2Raster( raster, points):
     return cellid, coord, featid
 
 def matchRasterCellIds2points( cellIds, raster):
+    ''' matches cell ids (topleft=0, 1=one to the right like a picture, ... bottomright=w*h)
+        to a raster, does not check if id is out of bounds '''
     extent = raster.extent()
     dx = raster.rasterUnitsPerPixelX()
     dy = raster.rasterUnitsPerPixelY()
@@ -220,8 +230,9 @@ def matchRasterCellIds2points( cellIds, raster):
     xy = [ id2xy( c, raster.width(), raster.height()) for c in cellIds ]
     return [ [xspace[x], yspace[y]] for x,y in xy ]
 
-from osgeo import gdal
 def check_gdal_driver_name( layer, driver_name='AAIGrid'):
+    ''' opens layer file with gdal
+        check gdal driver name '''
     afile = layer.publicSource()
     if not afile:
         return False, 'no public source'
@@ -252,92 +263,3 @@ def testTransforms( w=6, h=4):
 
 testTransforms( w=6, h=4)
 '''
-
-from itertools import islice
-def csv2ascList( file_list = ['ForestGrid00.csv','ForestGrid01.csv'], header_file = 'elev.asc' ):
-    with open( header_file, 'r') as afile:
-        header = list(islice(afile, 6))
-    for afile in file_list:
-        fname = afile[:-4]
-        csv2ascFile( in_file = afile, header = header, out_file = fname+'.asc')
-
-def csv2ascFile( in_file = 'ForestGrid00.csv', 
-        header = ['ncols 508\n', 'nrows 610\n', 'xllcorner 494272.38261041\n', 'yllcorner 4652115.6527613\n', 'cellsize 20\n', 'NODATA_value -9999\n'],
-        out_file = 'ForestGrid00.asc'):
-    
-    with open(out_file, 'w') as outfile:
-        outfile.writelines(header)
-
-    with open( in_file, 'rb', buffering=0) as infile:
-        with open(out_file, 'ab') as outfile:
-            outfile.write(infile.read().replace(b',',b' '))
-
-def clipRasterLayerByMask(raster, polygon, nodata=-32768):
-    ''' Algorithm 'Clip raster by mask layer' 
-    gdal:cliprasterbymasklayer -> Clip raster by mask layer
-    make sure both layers are saved to disk, & same CRS
-    adds new layer to project
-    returns filepath str
-    '''
-    outname = raster.name() + '_clippedBy_' + polygon.name() + '.asc'
-    outname = outname.replace(' ','')
-    outpath = QgsProject().instance().absolutePath()
-    out = os.path.join( outpath, outname )
-
-    tmp = processing.run('gdal:cliprasterbymasklayer', 
-            { 'ALPHA_BAND' : False, 'CROP_TO_CUTLINE' : True, 'DATA_TYPE' : 0, 'EXTRA' : '', 'INPUT' : raster, 'KEEP_RESOLUTION' : True, 'MASK' : polygon, 'MULTITHREADING' : True, 'NODATA' : nodata, 'OPTIONS' : '', 'OUTPUT' : out, 'SET_RESOLUTION' : False, 'SOURCE_CRS' : raster.crs(), 'TARGET_CRS' : raster.crs(), 'X_RESOLUTION' : None, 'Y_RESOLUTION' : None })
-    iface.addRasterLayer( out, outname)
-    return tmp['OUTPUT'] 
-
-def clipVectorByPolygon(layer, polygon):
-    ''' gdal:clipvectorbypolygon
-    adds new layer to project
-    returns filepath str
-    '''
-    outname = layer.name() + '_clippedBy_' + polygon.name() + '.shp'
-    outname = outname.replace(' ','')
-    outpath = QgsProject().instance().absolutePath()
-    out = os.path.join( outpath, outname )
-    tmp = processing.run('gdal:clipvectorbypolygon', 
-            { 'INPUT' : layer, 'MASK' : polygon, 'OPTIONS' : '', 'OUTPUT' : out })
-            #{ 'INPUT' : layer, 'MASK' : polygon, 'OPTIONS' : '', 'OUTPUT' : 'TEMPORARY_OUTPUT' })
-    iface.addVectorLayer(out , ' ', 'ogr') #layer.providerType())
-    return tmp['OUTPUT'] 
-
-def clipVectorLayerByExtent(layer, extent, clip=True):
-    '''processing.algorithmHelp('native:extractbyextent')
-    Extract/clip by extent
-             'EXTENT' : extent, #'-70.651805555556,-70.60828703703399,-33.434398148148,-33.411249999998', 
-             'INPUT' : layer, #'/home/fdo/dev/fire2am/userFolder/ignitions.shp', 
-    '''
-    tmp = processing.run('native:extractbyextent', 
-            {'CLIP' : clip, 
-             'EXTENT' : extent,
-             'INPUT' : layer,
-             'OUTPUT' : 'TEMPORARY_OUTPUT' })
-    return tmp['OUTPUT'] 
-
-def pixelstopolygons(layer): 
-    '''processing.algorithmHelp('native:pixelstopolygons')
-        TODO add params , band=1, field_name='VALUE')
-    '''
-    tmp = processing.run('native:pixelstopolygons', 
-               {'INPUT_RASTER' : layer, 
-                'RASTER_BAND' : 1,
-                'FIELD_NAME' : 'VALUE', 
-                'OUTPUT' : 'TEMPORARY_OUTPUT' })
-    return tmp['OUTPUT'] 
-
-def listAllProcessingAlgorithms():
-    ''' processing must be added to PYTHONPATH
-    import processing
-    or 
-    from qgis import processing
-
-    get help string example:
-        processing.algorithmHelp('native:pixelstopolygons')
-
-    'native:native:adduniquevalueindexfield' NOT FOUND
-    '''
-    for alg in QgsApplication.processingRegistry().algorithms():
-            print(alg.id(), "->", alg.displayName())
