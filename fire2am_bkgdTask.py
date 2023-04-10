@@ -1,21 +1,29 @@
-# QGIS
-from qgis.core import QgsApplication, QgsTask, QgsMessageLog, Qgis, QgsRasterBandStats, QgsRectangle, QgsCoordinateReferenceSystem, QgsRasterLayer, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer, QgsField, QgsVectorFileWriter
-from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.Qt import Qt
-import processing
-# plugin
-from .qgis_utils import array2rasterFloat32, array2rasterInt16, rasterRenderInterpolatedPseudoColor, writeVectorLayer, matchRasterCellIds2points, mergeVectorLayers
-from .fire2am_utils import aName#, log, 
-# normal
+#!/bin/env python3
+import re
 from datetime import datetime, timedelta
-from pandas import DataFrame, concat, Timestamp
-from shutil import rmtree
-from pathlib import Path
-from scipy import stats
-import numpy as np
 from os import sep
 from os.path import join as os_path_join
-import re
+from pathlib import Path
+from shutil import rmtree
+import numpy as np
+from scipy import stats
+from pandas import DataFrame, Timestamp, concat
+# QGIS
+import processing
+# pylint: disable=no-name-in-module
+from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
+                       QgsFeature, QgsField, QgsGeometry, QgsMessageLog,
+                       QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
+                       QgsRectangle, QgsTask, QgsVectorFileWriter,
+                       QgsVectorLayer)
+from qgis.PyQt.Qt import Qt
+from qgis.PyQt.QtCore import QVariant
+# pylint: enable=no-name-in-module
+# plugin
+from .fire2am_utils import aName  # , log,
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+                         matchRasterCellIds2points, mergeVectorLayers,
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
 
 MESSAGE_CATEGORY = 'Background_'+aName
 
@@ -168,7 +176,7 @@ class after_ForestGrid(QgsTask):
             ''' sub for each sim FireEvolution '''
             for s,t,z,nu,fi,ii,dt in zip(self.sim_num, self.sim_totals, self.sim_zeros, self.sim_nu, self.sim_fi, self.sim_idx, self.sim_dt):
                 tg = t - np.sum(z) # total good != 0 data
-                if tg>0:
+                if tg>1:
                     mergedName = 'FireEvolution_'+str(s).zfill(self.width1stNum)
                     self.subTask[mergedName] = QgsTask.fromFunction(self.description()+' FireEvolution simulation %s'%s, self.sub_FireEvolution, s, tg, ii, nu, dt, mergedName, on_finished=after_ForestGrid_FireEvolution_finished)
                     QgsApplication.taskManager().addTask( self.subTask[mergedName])
