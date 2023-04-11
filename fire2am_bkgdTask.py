@@ -89,6 +89,7 @@ class after_ForestGrid(QgsTask):
         self.out_gpkg = args['OutFolder'] / (layerName+'.gpkg')
         self.rout_gpkg = args['OutFolder'] / ('r'+layerName+'.gpkg')
         self.vout_gpkg = args['OutFolder'] / ('v'+layerName+'.gpkg')
+        self.evout_gpkg = args['OutFolder'] / (layerName+'Evolution.gpkg')
         self.now = datetime.now()
         self.dt = []
         self.sim_dt = []
@@ -224,10 +225,11 @@ class after_ForestGrid(QgsTask):
             polys=[ str(self.vout_gpkg)+'|layername='+self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum) \
                     for i,(nsim,ngrid) in zip(ii,nu) if not self.data_isZeros[i]]
             #QgsMessageLog.logMessage(task.description()+f' tg>1 {polys[-1]}', MESSAGE_CATEGORY, Qgis.Info)
-            mergeVectorLayers( polys, str(self.vout_gpkg), mergedName )
+            #mergeVectorLayers( polys, str(self.vout_gpkg), mergedName )
+            mergeVectorLayers( polys, str(self.evout_gpkg), mergedName )
             #QgsMessageLog.logMessage(task.description()+' tg>1 2', MESSAGE_CATEGORY, Qgis.Info)
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
-        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'vout_gpkg':self.vout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
+        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'vout_gpkg':self.evout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
 
 def after_ForestGrid_meanFireScar_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
