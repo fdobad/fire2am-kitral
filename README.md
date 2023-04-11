@@ -1,22 +1,22 @@
 # fire2am ~ fire 2 advanced analytics and management
 
-# repo contents
+## 0. [Plugin users check documentation here](https://fdobad.github.io/doctest/)  
+(the one here at docs/ may be not uptodate)
 
-0. plugin [documentation](docs/README.md), moved to [link](fdobad.github.io/doctest)  
-
-1. QGIS plugin is root, strictly necessary files:  
+## 1. What's here:
+- This repo is QGIS plugin root, strictly necessary files:  
     ```
     fire2am*
     __init__.py
-    metadata.txt
+    metadata.txt            <- plugin id
     qgis_utils.py
     ParseInputs2.py
     spain_lookup_table.csv
-    img/
-    C2FSB/
+    img/                    <- ui resources
+    C2FSB/                  <-simulator binaries
     ```
 
-3. extras
+- Extras
     ```
     # previncat wnd 2 weather.csv transformer
     wnd2Weathercsv.py
@@ -37,4 +37,5 @@
     Statspy_Grid.py
     ```
 
-
+# 2. Give us feedback
+At the issues or directly to fire2a@fire2a.com
