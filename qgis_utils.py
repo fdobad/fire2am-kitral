@@ -18,16 +18,28 @@ import numpy as np
 import processing
 from osgeo import gdal
 # pylint: disable=no-name-in-module
-from qgis.core import (Qgis, QgsColorRampShader,  # , QgsFeatureRequest
+from qgis.core import (Qgis, QgsColorRampShader, QgsMapLayerType,
                        QgsField, QgsGeometry, QgsRasterBlock,
                        QgsRasterFileWriter, QgsRasterLayer, QgsRasterShader,
-                       QgsSingleBandPseudoColorRenderer, QgsVectorDataProvider,
-                       QgsVectorFileWriter, QgsVectorLayer)
-from qgis.PyQt.QtCore import QByteArray, QVariant
+                       QgsSingleBandPseudoColorRenderer,
+                       QgsVectorFileWriter, QgsVectorLayer, QgsWkbTypes)
+from qgis.PyQt.QtCore import QByteArray #, QVariant
 from qgis.PyQt.QtGui import QColor
 # pylint: enable=no-name-in-module
 
 from .fire2am_utils import log
+
+def checkLayerPoints(layer):
+    if not layer:
+        return -1, 'Empty'
+    if not layer.type() == QgsMapLayerType.VectorLayer:
+        return -1, 'Not vector layer'
+    if not layer.wkbType() == QgsWkbTypes.Point:
+        return -1, 'Not point type '
+    pts = [ f.geometry() for f in layer.getFeatures() \
+            if hasattr( f, 'geometry') and callable(getattr( f, 'geometry')) and \
+               f.geometry().wkbType() == QgsWkbTypes.Point]
+    return len(pts), 'Ok'
 
 
 def pointsInRaster( points, raster):

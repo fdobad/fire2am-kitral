@@ -57,16 +57,16 @@ from .fire2am_argparse import fire2amClassDialogArgparse
 from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile2)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
-from .fire2am_utils import aName
 from .fire2am_utils import check as fdoCheck
-from .fire2am_utils import get_params, log #, randomDataFrame
+from .fire2am_utils import aName, get_params, log #, randomDataFrame
 # Initialize Qt resources from file resources.py
 from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
                          check_gdal_driver_name, matchPoints2Raster,
                          matchRasterCellIds2points, mergeVectorLayers,
-                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer, 
+                         checkLayerPoints)
 
 # For debugging
 #import pdb
@@ -341,7 +341,7 @@ class fire2amClass:
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
+        #self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
         self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
         self.dlg.pushButton.pressed.connect(self.slot_doit)
@@ -705,6 +705,12 @@ class fire2amClass:
                 if layer.crs() != self.crs:
                     log(str(layer.crs())+' is different from project '+str(self.crs)+'in'+str(key), pre='CRS error', level=3, msgBar=self.dlg.msgBar)
                     return False
+        ''' check if ignitionPoints layer has points '''
+        if self.dlg.state['radioButton_ignitionPoints']:
+            numPoints, msg = checkLayerPoints(self.dlg.state['layerComboBox_ignitionPoints'])
+            if numPoints < 1:
+                log('problem: '+msg, pre='Ignition Point!', level=3, msgBar=self.dlg.msgBar)
+                return False
         return True
 
     def updateProject(self):
@@ -714,6 +720,7 @@ class fire2amClass:
         self.extent = self.dlg.state['layerComboBox_fuels'].extent()
 
     def run_All(self):
+        ''' run simulation '''
         self.dlg.updateState()
         self.updateProject()
         if not self.checkMap():
@@ -746,7 +753,6 @@ class fire2amClass:
         if self.proc is None:
             self.externalProcess_message('Starting run process '+self.gen_cmd)
             log('Starting run process '+self.gen_cmd,level=0)
-
             self.proc = QProcess()
             self.proc.setInputChannelMode(QProcess.ForwardedInputChannel)
             self.proc.setProcessChannelMode( QProcess.SeparateChannels)
@@ -762,7 +768,7 @@ class fire2amClass:
             self.proc.start( ar[0], ar[1:] )
             self.externalProcess_message('Started')
             log('Started',level=0)
-            '''basic
+            ''' debug basic
             self.proc.setWorkingDirectory( os.path.join( self.plugin_dir, 'extras'))
             self.proc.start("python3", ['dummy_proc.py'])
             '''
@@ -819,19 +825,25 @@ class fire2amClass:
         self.after()
 
     def after(self):
-        ''' our folder not exists stop '''
+        ''' After the simulation, check if then do:
+            - if output folder exists, continue, else abort
+            - if logfile exists, load ignition points
+            - if Grids folder exists load fire scars, evolution or mean
+            - if any of the 5 indicators folder exists, load them or mean them
+        '''
+        # out folder not exists stop
         if not self.args['OutFolder'].is_dir():
             log('results folder',self.args['OutFolder'], pre='Does NOT exist', msgBar=self.dlg.msgBar, level=3)
             return
-
-        ''' args '''
-        baseLayer = self.dlg.state['layerComboBox_fuels']
+        '''
+        # get args
         if 'nsims' in self.args.keys():
             nsims = self.args['nsims']
         else:
             nsims = self.default_args['nsims']
-
-        ''' logFile '''
+        '''
+        # logFile for: ignition points
+        baseLayer = self.dlg.state['layerComboBox_fuels']
         if Path(self.args['OutFolder'], 'LogFile.txt').is_file():
             ''' open file '''
             with open( self.args['OutFolder'] / 'LogFile.txt', 'rb', buffering=0) as afile:
@@ -847,7 +859,6 @@ class fire2amClass:
             self.taskManager.addTask( self.task['log'])
         else:
             log('LogFile.txt not available', pre='No simulation log', level=3, msgBar=self.dlg.msgBar)
-
         ''' Grids '''
         if Path(self.args['OutFolder'], 'Grids').is_dir():
             log('processing', pre='Grids found!', level=4, msgBar=self.dlg.msgBar)
@@ -858,7 +869,6 @@ class fire2amClass:
             self.taskManager.addTask( self.task[layerName])
         else:
             log('Grids folder not available', pre='No Grids', level=3, msgBar=self.dlg.msgBar)
-
         ''' stats '''
         doit = ['OutFl'               in self.args.keys(),
                 'OutIntensity'        in self.args.keys(),
@@ -880,6 +890,7 @@ class fire2amClass:
         # modify or create proper qgsTask
 
     def on_finished(self, exception, value=None):
+        ''' default finish qgs task '''
         if not exception:
             if value:
                 self.iface.messageBar().pushMessage('task finished & returned: {}'.format(value))
@@ -889,9 +900,12 @@ class fire2amClass:
             self.iface.messageBar().pushMessage(str(exception))
 
     def ui_addVectorLayer(self, geopackage, layerName, styleName):
+        ''' load a layer '''
         vectorLayer = self.iface.addVectorLayer( str(geopackage)+'|layername='+layerName, layerName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+styleName))
 
     def slot_doit(self):
+        ''' this connects to the unnamed button on the run tab
+            is mainly for live debugging stuff '''
         after(self)
 

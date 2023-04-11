@@ -1,5 +1,6 @@
 [MAIN]
 
+bad-docstring-quotes=no
 # Analyse import fallback blocks. This can be used to support both Python 2 and
 # 3 compatible code, which means that the block might have code that exists
 # only in one or another interpreter, leading to false positives when analysed.
@@ -451,7 +452,8 @@ timeout-methods=requests.api.delete,requests.api.get,requests.api.head,requests.
 # List of note tags to take in consideration, separated by a comma.
 notes=FIXME,
       XXX,
-      TODO
+      TODO,
+      TBD
 
 # Regular expression of note tags to take in consideration.
 notes-rgx=
@@ -545,6 +547,8 @@ check-quote-consistency=no
 # This flag controls whether the implicit-str-concat should generate a warning
 # on implicit string concatenation in sequences defined over several lines.
 check-str-concat-over-line-jumps=no
+
+pointless-string-statement=no
 
 
 [TYPECHECK]
