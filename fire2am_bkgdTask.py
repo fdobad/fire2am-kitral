@@ -198,13 +198,12 @@ class after_ForestGrid(QgsTask):
         ''' get burn prob '''
         meanData = np.mean( self.data[self.final_grid_idx], axis=0, dtype=np.float32)
         name_prefix = 'mean_' if len(self.sim_num) > 1 else ''
-        self.layerName = name_prefix + self.layerName
-        #QgsMessageLog.logMessage(task.description()+f' a{meanData.shape} b{name_prefix} c{self.layerName}', MESSAGE_CATEGORY, Qgis.Info)
-        array2rasterFloat32( meanData, self.layerName, self.out_gpkg, self.extent, self.crs, nodata = 0.0)
+        layerName = name_prefix + self.layerName
+        array2rasterFloat32( meanData, layerName, self.out_gpkg, self.extent, self.crs, nodata = 0.0)
         st = stats.describe( meanData, axis=None)
-        df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
+        df = DataFrame( (layerName,*st), index=('Name',*st._fields), columns=[layerName])
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
-        return {'result':True, 'description':task.description(), 'df':df, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':self.layerName }
+        return {'result':True, 'description':task.description(), 'df':df, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':layerName }
 
     def sub_FireEvolution(self, task, s, tg, ii, nu, dt, mergedName):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
