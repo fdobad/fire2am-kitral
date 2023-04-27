@@ -409,18 +409,13 @@ class fire2amClass:
         spain look up table'''
         copy( os.path.join( self.plugin_dir, 'spain_lookup_table.csv') , self.args['InFolder'])
         '''
-        elevation '''
-        copy( self.dlg.state['layerComboBox_elevation'].publicSource() , 
-                os.path.join( self.args['InFolder'], 'elevation.asc'))
-        log( 'elevation copied', level=0, msgBar=self.dlg.msgBar)
-        '''
         fuels'''
         copy( self.dlg.state['layerComboBox_fuels'].publicSource() , 
                 os.path.join( self.args['InFolder'], 'fuels.asc'))
         log( 'fuels copied',level=0, msgBar=self.dlg.msgBar)
         ''' 
-        cbh cbd ccf'''
-        for name in ['cbh', 'cbd', 'ccf']:
+        elevation cbh cbd ccf'''
+        for name in ['elevation', 'cbh', 'cbd', 'ccf']:
             layer = self.dlg.state['layerComboBox_'+name]
             if layer:
                 if layer.type() == QgsMapLayerType.RasterLayer:
