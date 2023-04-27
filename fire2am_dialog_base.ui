@@ -16,8 +16,11 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QTabWidget" name="tabWidget">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <property name="currentIndex">
-      <number>3</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -88,6 +91,9 @@
        </item>
        <item row="1" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_elevation">
+         <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
          <property name="showCrs">
           <bool>true</bool>
          </property>
@@ -594,6 +600,9 @@ for (normal distribution)
       </layout>
      </widget>
      <widget class="QWidget" name="tab">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <attribute name="title">
        <string>Plots</string>
       </attribute>
@@ -799,6 +808,49 @@ Also hardware limited</string>
        </item>
        <item row="8" column="0" colspan="2">
         <spacer name="horizontalSpacer_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>About</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_10">
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_17">
+         <property name="text">
+          <string>version 0.6
+ Documentation at: fdobad.github.io/doctest
+Subscribe to the repo to get notified of new releases
+Ask the fire2a team for access to the repo</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <spacer name="horizontalSpacer_7">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="0" column="2">
+        <spacer name="horizontalSpacer_8">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
