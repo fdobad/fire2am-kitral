@@ -33,6 +33,7 @@ from os import sep
 from pathlib import Path
 from shlex import split as shlex_split
 from shutil import copy
+import networkx as nx
 
 from scipy import stats
 import numpy as np
@@ -54,7 +55,7 @@ from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 # pylint: enable=no-name-in-module
 
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile2)
+from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile2, after_betweenness_centrality)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
@@ -62,7 +63,7 @@ from .fire2am_utils import aName, get_params, log #, randomDataFrame
 # Initialize Qt resources from file resources.py
 from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
-from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          check_gdal_driver_name, matchPoints2Raster,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer, 
@@ -621,6 +622,9 @@ class fire2amClass:
         # TODO ? [ 'OutFl', 'OutIntensity', 'OutRos']
         if 'OutCrown' in args.keys() or 'OutCrownConsumption' in args.keys():
             args['cros'] = True
+        # 2e betweenness_centrality
+        if self.dlg.state['checkBox_betweennessCentrality']:
+            args['OutMessages'] = True
         # 3 discard default value args 
         popkeys = []
         for dkey in self.default_args:
@@ -884,6 +888,12 @@ class fire2amClass:
         # TODO CrownFire is bool but loaded as float32
         # modify or create proper qgsTask
 
+        if Path(self.args['OutFolder'], 'Messages').is_dir():
+            log('processing', pre='Messages found!', level=4, msgBar=self.dlg.msgBar)
+            name = 'betweenness_centrality'
+            self.task[name] = after_betweenness_centrality( name, self.iface, self.dlg, self.args, 'Messages', 'MessagesFile', self.extent, self.crs, self.plugin_dir)
+            self.taskManager.addTask( self.task[name])
+
     def on_finished(self, exception, value=None):
         ''' default finish qgs task '''
         if not exception:
@@ -902,5 +912,59 @@ class fire2amClass:
     def slot_doit(self):
         ''' this connects to the unnamed button on the run tab
             is mainly for live debugging stuff '''
-        after(self)
+        self.dlg.updateState()
+        self.updateProject()
+        self.makeArgs()
+        #after(self)
+        if not Path(self.args['OutFolder'], 'Messages').is_dir():
+            return
+        directory = Path(self.args['OutFolder'], 'Messages')
+        file_name = 'MessagesFile'
+        file_list = sorted( directory.glob( file_name+'[0-9]*.csv'))
+        file_string = ' '.join([ f.stem for f in file_list ])
+        
+        # sort acording to simulation number
+        sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
+        asort = np.argsort( sim_num)
+        sim_num = sim_num[ asort]
+        file_list = np.array( file_list)[ asort]
+        
+        # sim stats
+        num_width = len(str(np.max( sim_num)))
+        nsim = len(sim_num)
+        
+        # load all data as numpy arrays
+        data = []
+        for afile in file_list:
+            #data += [ np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('t',np.int16),('hros',np.float32)])]
+            data +=[ np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('t',np.int16)], usecols=(0,1,2))]
+            #print('read file',afile)
+        
+        # make a graph with keys=simulations, weights=burnt time
+        MDG = nx.MultiDiGraph()
+        for k,dat in enumerate(data):
+            func = np.vectorize(lambda x:{'weight':x})
+            # ebunch_to_add : container of 4-tuples (u, v, k, d) for an edge with data and key k
+            bunch = np.vstack(( dat['i'], dat['j'], [k]*len(dat), func(dat['t']) )).T
+            MDG.add_edges_from( bunch)
+            print('sim',k,bunch[:3])
+        
+        # outputs {nodes:betweenness_centrality_float_value}
+        centrality = nx.betweenness_centrality(MDG, weight='weight')
+        #log(centrality, level=0)
 
+        layer = self.dlg.state['layerComboBox_fuels']
+        W,H = layer.width(), layer.height()
+        centrality_xy = [ [*id2xy( key-1, W, H), value] for key,value in centrality.items() ]
+        centrality_array = np.zeros((H,W), dtype=np.float32)
+
+        gpkg = Path(self.args['OutFolder'], 'bc.gpkg')
+        layerName='betweenness_centrality'
+        for x,y,v in centrality_xy:
+            centrality_array[y,x]=v 
+        array2rasterFloat32( centrality_array, layerName, gpkg, self.extent, self.crs, nodata = 0.0)
+        #load
+        layer = self.iface.addRasterLayer('GPKG:'+str(gpkg)+':'+layerName, layerName)
+        minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+        maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+        rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)

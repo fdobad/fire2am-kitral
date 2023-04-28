@@ -5,6 +5,7 @@ from os import sep
 from os.path import join as os_path_join
 from pathlib import Path
 from shutil import rmtree
+import networkx as nx
 import numpy as np
 from scipy import stats
 from pandas import DataFrame, Timestamp, concat
@@ -21,7 +22,7 @@ from qgis.PyQt.QtCore import QVariant
 # pylint: enable=no-name-in-module
 # plugin
 from .fire2am_utils import aName  # , log,
-from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer)
 
@@ -466,3 +467,118 @@ def afterTask_logFile2(task, logText, layerName, baseLayer, out_gpkg):
     task.setProgress(100)
     QgsMessageLog.logMessage(task.description()+' Ended', MESSAGE_CATEGORY, Qgis.Info)
 
+class after_betweenness_centrality(QgsTask):
+    def __init__(self, description, iface, dlg, args, folder_name, file_name, extent, crs, plugin_dir):
+        super().__init__(description, QgsTask.CanCancel)
+        self.exception = None
+        self.args = args
+        self.directory = Path( self.args['OutFolder'], folder_name)
+        self.layer_name = description
+        self.file_name = file_name
+        self.gpkg = Path( self.args['OutFolder'], description+'.gpkg')
+        self.dlg = dlg
+        self.iface = iface
+        self.extent = extent
+        self.crs = crs
+        self.bc = None
+        self.data = []
+        self.plugin_dir = plugin_dir
+
+    def run(self):
+        QgsMessageLog.logMessage(self.description()+' Started ',MESSAGE_CATEGORY, Qgis.Info)
+        ''' get filelist '''
+        file_list = sorted( self.directory.glob( self.file_name+'[0-9]*.csv'))
+        file_string = ' '.join([ f.stem for f in file_list ])
+        ''' sort by number '''
+        sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
+        asort = np.argsort( sim_num)
+        sim_num = sim_num[ asort]
+        file_list = np.array( file_list)[ asort]
+        num_width = len(str(np.max( sim_num)))
+        nsim = len(sim_num)
+
+        QgsMessageLog.logMessage(self.description()+' getting %s files'%nsim,MESSAGE_CATEGORY, Qgis.Info)
+        ''' get all asc 2 array '''
+        for i,afile in enumerate(file_list):
+            self.data +=[ np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('t',np.int16)], usecols=(0,1,2))]
+            self.setProgress((i+1)/nsim*10)
+            if self.isCanceled():
+                QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                return False
+        ''' make a graph with keys=simulations, weights=burnt time '''
+        QgsMessageLog.logMessage(self.description()+' building MultiDiGraph',MESSAGE_CATEGORY, Qgis.Info)
+        mdg = nx.MultiDiGraph()
+        for k,dat in enumerate(self.data):
+            func = np.vectorize(lambda x:{'weight':x})
+            # ebunch_to_add : container of 4-tuples (u, v, k, d) for an edge with data and key k
+            bunch = np.vstack(( dat['i'], dat['j'], [k]*len(dat), func(dat['t']) )).T
+            mdg.add_edges_from( bunch)
+            #print('sim',k,bunch[:3])
+            self.setProgress(0.1+(i+1)/nsim*10)
+            if self.isCanceled():
+                QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                return False
+        
+        QgsMessageLog.logMessage(self.description()+' calculating betweenness_centrality k=int(5*sqrt(|G|))',MESSAGE_CATEGORY, Qgis.Info)
+        # outputs {nodes:betweenness_centrality_float_value}
+        centrality = nx.betweenness_centrality(mdg, k=int(5*np.sqrt(mdg.number_of_nodes())), weight='weight')
+        #log(centrality, level=0)
+
+        QgsMessageLog.logMessage(self.description()+' building resulting layer',MESSAGE_CATEGORY, Qgis.Info)
+
+        self.setProgress(0.9)
+        layer = self.dlg.state['layerComboBox_fuels']
+        W,H = layer.width(), layer.height()
+        centrality_xy = [ [*id2xy( key-1, W, H), value] for key,value in centrality.items() ]
+        centrality_array = np.zeros((H,W), dtype=np.float32)
+
+        self.layer_name='betweenness_centrality'
+        for x,y,v in centrality_xy:
+            centrality_array[y,x]=v
+        array2rasterFloat32( centrality_array, self.layer_name, self.gpkg, self.extent, self.crs, nodata = 0.0)
+        QgsMessageLog.logMessage(self.description()+' foo ',MESSAGE_CATEGORY, Qgis.Info)
+        # TODO 
+        # fix self.data = np.array(self.data)
+        # is it tuples inside ?
+        QgsMessageLog.logMessage(self.description()+' bar ',MESSAGE_CATEGORY, Qgis.Info)
+        return True
+
+    def finished(self, result):
+        if result:
+            QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
+            #QgsMessageLog.logMessage(self.description()+' finished w/result %s data shape %s'%(result, self.data.shape), MESSAGE_CATEGORY, Qgis.Info)
+            ''' show layer '''
+            layer = self.iface.addRasterLayer('GPKG:'+str(self.gpkg)+':'+self.layer_name, self.layer_name)
+            minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+            maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+            rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+            '''
+            #log('shown... now storing rasters', pre=self.layerName, level=4, msgBar=self.dlg.msgBar)
+            # describe mean raster into table
+            st = stats.describe( meanData, axis=None)
+            #df = DataFrame( st, index=st._fields, columns=[self.layerName])
+            df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
+            # get current table add column, store, reset
+            bf = self.dlg.statdf
+            df = concat([bf,df], axis=1)
+            self.dlg.statdf = df
+            self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+            #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
+            # write all rasters to gpkg in subtask
+            if self.nsim > 1:
+                self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)
+                QgsApplication.taskManager().addTask( self.subTask)
+            else:
+                rmtree(self.directory)
+                QgsMessageLog.logMessage(self.description()+' done', MESSAGE_CATEGORY, Qgis.Info)
+            '''
+        else:
+            if self.exception is None:
+                QgsMessageLog.logMessage(self.description()+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
+            else:
+                QgsMessageLog.logMessage(self.description()+' Finished w/o result w exception %s'%self.exception, MESSAGE_CATEGORY, Qgis.Warning)
+                raise self.exception
+
+    def cancel(self):
+        QgsMessageLog.logMessage(self.description()+' was canceled', MESSAGE_CATEGORY, Qgis.Info)
+        super().cancel()
