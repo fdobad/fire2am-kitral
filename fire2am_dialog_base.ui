@@ -381,7 +381,7 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
         <widget class="QLabel" name="label_10">
          <property name="text">
           <string>Foliar Moisture Content
-    Percentage 0...200%</string>
+    Percentage 40...200%</string>
          </property>
         </widget>
        </item>
@@ -439,13 +439,13 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
        <item row="7" column="1">
         <widget class="QSpinBox" name="spinBox_fmc">
          <property name="minimum">
-          <number>0</number>
+          <number>40</number>
          </property>
          <property name="maximum">
           <number>200</number>
          </property>
          <property name="value">
-          <number>100</number>
+          <number>80</number>
          </property>
         </widget>
        </item>
