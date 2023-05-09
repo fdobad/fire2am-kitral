@@ -302,15 +302,17 @@ class fire2amClass:
         ''' weather file'''
         if apath := QgsProject.instance().absolutePath():
             wfile = Path( apath, 'Weather.csv')
-            if wfile.is_file(): 
-                self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
-                self.dlg.radioButton_weatherFile.setChecked(True)
+            if wfile.is_file():
+                self.slot_fileWidget_weatherFile_fileChanged( wfile)
+                #self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
+                #self.dlg.radioButton_weatherFile.setChecked(True)
             ''' weather folder '''
             wfolder = Path( apath, 'Weathers')
-            if wfolder.is_dir(): 
-                self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
-                self.dlg.radioButton_weatherFolder.setChecked(True)
-            #self.dlg.args['nweathers'] = 0
+            if wfolder.is_dir():
+                self.slot_fileWidget_weatherFolder_fileChanged(wfolder)
+                #self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
+                #self.dlg.radioButton_weatherFolder.setChecked(True)
+                #self.dlg.args['nweathers'] = 1
         ''' default values '''
         self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.dlg.spinBox_nthreads.setMaximum(cpu_count())
@@ -558,7 +560,7 @@ class fire2amClass:
             if 'WS' not in df.columns or 'WD' not in df.columns or len(df)==0:
                 log(  os.path.basename(filepath)+' file does not contain them', pre='Missing WD or WS columns!', level=2, msgBar=self.dlg.msgBar)
                 restore()
-                return
+                return False
             log( 'has WD & WS columns, %s hours (rows)'%len(df), pre=os.path.basename(filepath), level=4, msgBar=self.dlg.msgBar)
             self.dlg.radioButton_weatherFile.setChecked(True)
             self.dlg.state['radioButton_weatherFile'] = True
