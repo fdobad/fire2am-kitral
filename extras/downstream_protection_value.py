@@ -126,7 +126,9 @@ def minimum_spanning_arborescence(G):
 
 
 def recursiveUp(G):
-    ''' count up'''
+    ''' count up WTF!!!
+        leafs = [x for x in T.nodes if T.out_degree(x)==0]
+    '''
     for i in G.nodes:
         G.nodes[i]['dv']=1
         #G.nodes[i]['dv']=0
@@ -141,9 +143,17 @@ def recursiveUp(G):
     for leaf in (x for x in G.nodes if G.out_degree(x)==0):
         count_up(G,leaf)
 
-leafs = [x for x in T.nodes if T.out_degree(x)==0]
+def recuDown(G,root):
+    assert nx.is_tree(G), 'not tree'
+    for i in G.nodes:
+        G.nodes[i]['dv']=1
+    def count_down( G, i):
+        for j in G.successors(i):
+            G.nodes[i]['dv']+=count_down(G,j)
+        return G.nodes[i]['dv'] 
+    count_down(G,root)
 
-def not()
+def not():
     reviewed = set()
     for t in times[::-1]:
         for j in data['j'][ data['t'] == t]:
@@ -191,5 +201,6 @@ if __name__ == "__main__":
         afile = file_list[0]
         G, root = custom3(afile )
         T = shortest_propagation_tree(G, root)
-
+        recuDown(T,root)
+        print('dpv is',T.nodes[root])
 
