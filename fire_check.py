@@ -13,7 +13,7 @@ import numpy as np
 
 # header = 'Scenario,datetime,WS,WD,FireScenario'
 # header.split(',')
-WEATHER_FILE_HEADER = ['datetime', 'WS', 'WD', 'FireScenario']
+WEATHER_FILE_HEADER = ['datetime', 'WS', 'WD']
 
 def weather_file(afile : str) -> bool:
     """ check   column header match WEATHER_FILE_HEADER
@@ -46,7 +46,7 @@ def weather_file_quick(afile : str) -> bool:
         return False
     return True
 
-def weather_folder( apath : Path) -> bool:
+def weather_folder(apath : Path) -> bool:
     """ recursive glob Weather numbers """
     if not apath.is_dir():
         return False
@@ -67,7 +67,7 @@ def weather_folder( apath : Path) -> bool:
         return True
     return False
 
-def get_raster_metadata( afile : Path):
+def get_raster_metadata(afile : Path):
     """ extract info from raster using gdal 
     """
     dataset = gdal.Open(afile, gdal.GA_ReadOnly)
@@ -75,6 +75,7 @@ def get_raster_metadata( afile : Path):
     band_type = gdal.GetDataTypeName(band.DataType)
     band_min = band.GetMinimum()
     band_max = band.GetMaximum()
+    nodata_value = band.GetNoDataValue()
     if not band_min or not band_max:
         (band_min,band_max) = band.ComputeRasterMinMax(True)
     metadata = {'driver':dataset.GetDriver().ShortName,
@@ -84,7 +85,8 @@ def get_raster_metadata( afile : Path):
             'min':band_min,
             'max':band_max,
             'type':band_type,
-            'rc': dataset.RasterCount}
+            'rc': dataset.RasterCount, 
+            'nodata': nodata_value}
     dataset = None
     return metadata
 
@@ -107,8 +109,8 @@ def check_raster_congruence( raster_list : [str]) -> bool:
             return False
     return True
 
-def raster_in01( afile):
-    meta = get_raster_metadata( afile)
+def raster_in01(afile: str) -> bool:
+    meta = get_raster_metadata(afile)
     if not 'Float' in meta['type']:
         warning(f"raster {meta['name']} is not float")
         return False
@@ -120,14 +122,48 @@ def raster_in01( afile):
         return False
     return True
 
-def raster_fuels_in_def(): 
-    return None
+def raster_fuels_in_def(afile: str, def_fuels: str = "spain_lookup_table.csv") -> bool: 
+    dataset = gdal.Open(afile, gdal.GA_ReadOnly)
+    band = dataset.GetRasterBand(1).ReadAsArray()
 
-def read_assert_floats(): 
-    return None
+    unique_values = np.unique(band) 
+    grid_values = read_csv(def_fuels)['grid_value'].to_numpy()
+
+    meta = get_raster_metadata(afile)
+    grid_values = np.append(grid_values, meta['nodata'])
+
+    bool_list = np.isin(unique_values, grid_values)
+
+    if not 'Int' in meta['type']:
+        warning(f"raster {meta['name']} is not integer")
+        return False
+    
+    if not meta['min'] >= 0:
+        warning(f"raster {meta['name']} minimun is below zero")
+        return False
+    
+    if not bool_list.all():
+        warning(f"The raster {meta['name']} contains values that are not associated with any supported fuel type.")
+        return False
+    
+    return True
+
+def read_assert_floats(afile: str) -> bool: 
+    meta = get_raster_metadata(afile)
+    if not 'Int' in meta['type']:
+        warning(f"raster {meta['name']} is not integer")
+        return False
+    if not meta['min'] >= 0:
+        warning(f"raster {meta['name']} minimun is below zero")
+        return False
+    return True
 
 
 if __name__ == "__main__":
+    
+    INPUT = 'C2FSB/data/Zona_60/fuels.asc'
+    print(raster_fuels_in_def(INPUT))
+
     if arg:=sys.argv[1:]:
         if len(arg)==1:
             arg=arg[0]
