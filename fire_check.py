@@ -13,7 +13,7 @@ import numpy as np
 
 # header = 'Scenario,datetime,WS,WD,FireScenario'
 # header.split(',')
-WEATHER_FILE_HEADER = ['Scenario', 'datetime', 'WS', 'WD', 'FireScenario']
+WEATHER_FILE_HEADER = ['datetime', 'WS', 'WD', 'FireScenario']
 
 def weather_file(afile : str) -> bool:
     """ check   column header match WEATHER_FILE_HEADER
@@ -21,7 +21,7 @@ def weather_file(afile : str) -> bool:
                 by opening as pandas dataframe
     """
     #header = list(map( str.strip, read_csv( afile, nrows=1).columns))
-    if np.any( read_csv( afile, nrows=1).columns != WEATHER_FILE_HEADER):
+    if np.any( read_csv( afile, nrows=1).columns in WEATHER_FILE_HEADER):
         warning(f'weather file {afile} header is invalid')
         return False
     df_dtypes = read_csv( afile).dtypes
@@ -120,6 +120,13 @@ def raster_in01( afile):
         return False
     return True
 
+def raster_fuels_in_def(): 
+    return None
+
+def read_assert_floats(): 
+    return None
+
+
 if __name__ == "__main__":
     if arg:=sys.argv[1:]:
         if len(arg)==1:
@@ -137,4 +144,3 @@ if __name__ == "__main__":
             print(arg,'raster congruence check',check_raster_congruence(arg))
     else:
         print('Hello World!')
-
