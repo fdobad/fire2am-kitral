@@ -91,7 +91,9 @@ class after_ForestGrid(QgsTask):
         self.rout_gpkg = args['OutFolder'] / ('r'+layerName+'.gpkg')
         self.vout_gpkg = args['OutFolder'] / ('v'+layerName+'.gpkg')
         self.evout_gpkg = args['OutFolder'] / (layerName+'Evolution.gpkg')
-        self.now = datetime.now()
+        #TODO: all datetimes start same day
+        #self.now = datetime.now()
+        self.now = datetime(2023, 1, 1, 0, 0)
         self.dt = []
         self.sim_dt = []
 
@@ -163,7 +165,9 @@ class after_ForestGrid(QgsTask):
         self.sim_zeros = sim_zeros 
         first, second = numbers.T
         self.width1stNum, self.width2ndNum = len(str(np.max(first))), len(str(np.max(second)))
-        self.dt = [ self.now-timedelta(hours=i) for i in range(total)]
+        #TODO note ascending datetime, inverts simulation num
+        #self.dt = [ self.now-timedelta(hours=i) for i in range(total)]
+        self.dt = [ self.now+timedelta(hours=i) for i in range(total)]
         self.sim_dt = np.split( self.dt, final_grid_idx)[1:]
         QgsMessageLog.logMessage(self.description()+' bg Ended',MESSAGE_CATEGORY, Qgis.Info)
         return True
@@ -212,7 +216,8 @@ class after_ForestGrid(QgsTask):
         #QgsMessageLog.logMessage(task.description()+f' started {s} {tg} {ii} {nu} {dt}', MESSAGE_CATEGORY, Qgis.Info)
         # TODO task.setProgress(s/self.total*50+50)
         task.setProgress(50)
-        for i,(nsim,ngrid),timestamp in zip(ii,nu,dt):
+        #TODO on next line:datetime inverted with dt[::-1]
+        for i,(nsim,ngrid),timestamp in zip(ii,nu,dt[::-1]):
             if not self.data_isZeros[i]:
                 evolayer = self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum)
                 #QgsMessageLog.logMessage(task.description()+f' evolayer {evolayer}', MESSAGE_CATEGORY, Qgis.Info)
