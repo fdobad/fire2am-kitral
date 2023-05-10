@@ -1,4 +1,4 @@
-grid_value,export_value,descriptive_name,fuel_type, r, g, b, h, s, l
+grid_value,export_value,descriptive_name,fuel_type,r,g,b,h,s,l
 101,101,The primary carrier of fire in GR1 is sparse grass though small amounts of fine dead fuel may be present,GR1,209,255,115,57,255,185
 102,102,The primary carrier of fire in GR2 is grass though small amounts of fine dead fuel may be present,GR2,209,255,115,57,255,185
 103,103,The primary carrier of fire in GR3 is continuous coarse humid-climate grass. Grass and herb fuel load is relatively light,GR3,34,102,51,95,128,68

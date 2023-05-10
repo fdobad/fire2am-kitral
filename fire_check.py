@@ -6,14 +6,16 @@ from pathlib import Path
 import sys
 import re
 from logging import error, warning
+import numpy as np
 from osgeo import gdal
 from pandas import read_csv
 from pandas.api.types import is_numeric_dtype
-import numpy as np
 
 # header = 'Scenario,datetime,WS,WD,FireScenario'
 # header.split(',')
-WEATHER_FILE_HEADER = ['datetime', 'WS', 'WD']
+WEATHER_FILE_HEADER = ('datetime', 'WS', 'WD')
+WS = WEATHER_FILE_HEADER[1]
+WD = WEATHER_FILE_HEADER[2]
 
 def weather_file(afile : str) -> bool:
     """ check   column header match WEATHER_FILE_HEADER
@@ -21,12 +23,15 @@ def weather_file(afile : str) -> bool:
                 by opening as pandas dataframe
     """
     #header = list(map( str.strip, read_csv( afile, nrows=1).columns))
-    if np.any( read_csv( afile, nrows=1).columns in WEATHER_FILE_HEADER):
-        warning(f'weather file {afile} header is invalid')
+    if not np.all(np.isin( WEATHER_FILE_HEADER,  read_csv( afile, nrows=1).columns)):
+        warning(f'weather file {afile} header does not contain all required columns {WEATHER_FILE_HEADER}')
         return False
     df_dtypes = read_csv( afile).dtypes
-    if not (is_numeric_dtype(df_dtypes.WS) and is_numeric_dtype(df_dtypes.WD)):
-        warning(f'weather file {afile} column is not numeric')
+    if not is_numeric_dtype(df_dtypes[WS]):
+        warning(f'weather file {afile} {WS} column is not numeric')
+        return False
+    if not is_numeric_dtype(df_dtypes[WD]):
+        warning(f'weather file {afile} {WD} column is not numeric')
         return False
     return True
 
@@ -115,7 +120,7 @@ def raster_in01(afile: str) -> bool:
         warning(f"raster {meta['name']} is not float")
         return False
     if not meta['min']>=0:
-        warning(f"raster {meta['name']} minimun is below zero")
+        warning(f"raster {meta['name']} minimum is below zero")
         return False
     if not meta['max']<=1:
         warning(f"raster {meta['name']} maximum is above one")
@@ -123,41 +128,50 @@ def raster_in01(afile: str) -> bool:
     return True
 
 def raster_fuels_in_def(afile: str, def_fuels: str = "spain_lookup_table.csv") -> bool: 
+    ''' get unique 1st band values from raster, check they are in def_fuels_lookup_table + nodata
+    '''
     dataset = gdal.Open(afile, gdal.GA_ReadOnly)
     band = dataset.GetRasterBand(1).ReadAsArray()
-
-    unique_values = np.unique(band) 
-    grid_values = read_csv(def_fuels)['grid_value'].to_numpy()
-
+    band = np.unique(band)
+    #
+    grid_values = read_csv(def_fuels, usecols=['grid_value'], dtype=np.int16).to_numpy()
     meta = get_raster_metadata(afile)
     grid_values = np.append(grid_values, meta['nodata'])
-
-    bool_list = np.isin(unique_values, grid_values)
-
+    #
+    if not np.all( np.isin( band, grid_values )):
+        warning(f"The raster {meta['name']} contains values that are not associated with any supported fuel type.")
+        return False
     if not 'Int' in meta['type']:
         warning(f"raster {meta['name']} is not integer")
         return False
-    
     if not meta['min'] >= 0:
-        warning(f"raster {meta['name']} minimun is below zero")
+        warning(f"raster {meta['name']} minimum is below zero")
         return False
-    
-    if not bool_list.all():
-        warning(f"The raster {meta['name']} contains values that are not associated with any supported fuel type.")
-        return False
-    
     return True
 
-def read_assert_floats(afile: str) -> bool: 
+def raster_type_float(afile: str) -> bool:
+    meta = get_raster_metadata(afile)
+    if not 'Float' in meta['type']:
+        warning(f"raster {meta['name']} is not float")
+        return False
+    return True
+
+def raster_type_int(afile: str) -> bool:
     meta = get_raster_metadata(afile)
     if not 'Int' in meta['type']:
         warning(f"raster {meta['name']} is not integer")
         return False
-    if not meta['min'] >= 0:
-        warning(f"raster {meta['name']} minimun is below zero")
-        return False
     return True
 
+def raster_type_float_positive(afile: str) -> bool:
+    meta = get_raster_metadata(afile)
+    if not 'Float' in meta['type']:
+        warning(f"raster {meta['name']} is not float")
+        return False
+    if not meta['min'] >= 0:
+        warning(f"raster {meta['name']} minimum is below zero")
+        return False
+    return True
 
 if __name__ == "__main__":
     

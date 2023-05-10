@@ -190,8 +190,8 @@ def get_grouped_parser(parser):
     return args, groups
 
 import logging
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
-#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
+#logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 from qgis.core import Qgis, QgsMessageLog
 def log(*args, pre='', level=1, plugin=aName, msgBar=None):
@@ -280,6 +280,20 @@ def safe_cast_ok(val, to_type, default=None):
 
 def check(obj,key):
     return hasattr(obj, key) and callable(getattr(obj, key))
+
+def rgb2hex_color(r,g,b) -> str:
+    ''' int 0-255 rgb to hex '''
+    return '#%02x%02x%02x'%(r,g,b)
+    #return '%02x%02x%02x'%(int(r*255), int(g*255), int(b*255))
+
+def fuel_lookuptable_colorconvert(afile = 'spain_lookup_table.csv'):
+    df = read_csv(afile, usecols=['grid_value','r','g','b','h','s','l'], dtype=np.int16)
+    from colorsys import rgb_to_hls
+    from colorsys import hls_to_rgb
+    for t in df.itertuples():
+        print((t.r,t.g,t.b),hls_to_rgb(t.h,t.l,t.s),rgb_to_hls(t.r,t.g,t.b),(t.h,t.l,t.s))
+        assert np.all( rgb_to_hls(t.r,t.g,t.b)==(t.h,t.l,t.s)) and np.all( (t.r,t.g,t.b)==hls_to_rgb(t.h,t.l,t.s))
+
 
 if __name__ == "__main__":
     '''
