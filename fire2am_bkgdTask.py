@@ -437,7 +437,7 @@ class nextHour:
         return Timestamp(self.now).isoformat(timespec='seconds')
 '''
 
-def afterTask_logFile2(task, logText, layerName, baseLayer, out_gpkg):
+def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
     QgsMessageLog.logMessage(task.description()+' Started ', MESSAGE_CATEGORY, Qgis.Info)
     task.setProgress(0)
     ''' get [sim,cell] from regex '''
