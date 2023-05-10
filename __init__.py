@@ -22,6 +22,8 @@
  ***************************************************************************/
  This script initializes the plugin, making it known to QGIS.
 """
+from importlib.util import find_spec
+from pathlib import Path
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -30,6 +32,19 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
+    requirements = Path(Path(__file__).parent,'requirements.txt').read_text().split()
+    #requirements = Path(Path.cwd(),'requirements.txt').read_text().split()
+    error=False
+    not_found=[]
+    for req in requirements:
+        if mod:=find_spec(req):
+            pass
+        else:
+            not_found+=[req]
+            error=True
+    if error:
+        from .err_dialog import ErrDialog 
+        return ErrDialog(iface,not_found)
     #
     from .fire2am import fire2amClass
     return fire2amClass(iface)
