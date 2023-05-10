@@ -55,11 +55,12 @@ from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 # pylint: enable=no-name-in-module
 
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile2, after_betweenness_centrality)
+from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
 from .fire2am_utils import aName, get_params, log #, randomDataFrame
+from . import fire2a_checks
 # Initialize Qt resources from file resources.py
 from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
@@ -303,16 +304,20 @@ class fire2amClass:
         if apath := QgsProject.instance().absolutePath():
             wfile = Path( apath, 'Weather.csv')
             if wfile.is_file():
-                self.slot_fileWidget_weatherFile_fileChanged( wfile)
-                #self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
-                #self.dlg.radioButton_weatherFile.setChecked(True)
+                if fire2a_checks.weather_file(wfile):
+                    self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
+                    self.dlg.radioButton_weatherFile.setChecked(True)
+                    #self.slot_fileWidget_weatherFile_fileChanged( wfile)
             ''' weather folder '''
+            #TODO check wfolder in background
             wfolder = Path( apath, 'Weathers')
             if wfolder.is_dir():
-                self.slot_fileWidget_weatherFolder_fileChanged(wfolder)
-                #self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
-                #self.dlg.radioButton_weatherFolder.setChecked(True)
-                #self.dlg.args['nweathers'] = 1
+                if fire2a_checks.weather_folder(wfolder):
+                    log('wfolder.is_weather_folder',pre='checks',level=3)
+                    self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
+                    self.dlg.radioButton_weatherFolder.setChecked(True)
+                    self.dlg.args['nweathers'] = len(list(wfile.glob('Weather[0-9]*.csv')))
+                    #self.slot_fileWidget_weatherFolder_fileChanged(wfolder)
         ''' default values '''
         self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.dlg.spinBox_nthreads.setMaximum(cpu_count())
@@ -354,10 +359,10 @@ class fire2amClass:
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
 
     def slot_windRandomize(self):
-       WD = np.random.randint(0,359)
-       WS = np.random.randint(1,100)
-       self.dlg.spinBox_windDirection.setValue(WD)
-       self.dlg.spinBox_windSpeed.setValue(WS)
+        WD = np.random.randint(0,359)
+        WS = np.random.randint(1,100)
+        self.dlg.spinBox_windDirection.setValue(WD)
+        self.dlg.spinBox_windSpeed.setValue(WS)
 
     def showPlot(self, index):
         log('showing!!!', level=4)
@@ -533,43 +538,38 @@ class fire2amClass:
             self.dlg.radioButton_weatherConstant.setChecked(True)
             self.dlg.args['nweathers'] = 0
         try:
-            ''' count sequential Weather files '''
-            i=1
-            while os.path.isfile( os.path.join( directory, 'Weather'+str(i)+'.csv')):
-                i+=1
-            i-=1
-            if i==0: 
-                ''' restore '''
-                log( 'Weather files must be a consecutive numbered sequence [1..N]', pre='No Weather[1..N].csv files', level=2, msgBar=self.dlg.msgBar)
+            #TODO check in background
+            if fire2a_checks.weather_folder(Path(directory)):
+                self.dlg.args['nweathers'] = len(list(Path(directory).glob('Weather[0-9]*.csv')))
+                self.dlg.radioButton_weatherFolder.setChecked(True)
+                self.dlg.state['radioButton_weatherFolder'] = True
+                self.dlg.state['fileWidget_weatherFolder'] = directory
+                log('Found in %s'%directory, pre='Weathers[1..%s].csv'%self.dlg.args['nweathers'], level=4, msgBar=self.dlg.msgBar)
+            else:
+                log('Files must be a consecutive numbered sequence [1..N] or a file is wrong check log', pre='Weather[1..N].csv problem', level=2, msgBar=self.dlg.msgBar)
                 restore()
                 return
-            log(  'Found in %s'%directory, pre='Weathers[1..%s].csv'%i, level=4, msgBar=self.dlg.msgBar)
-            self.dlg.radioButton_weatherFolder.setChecked(True)
-            self.dlg.state['radioButton_weatherFolder'] = True
-            self.dlg.state['fileWidget_weatherFolder'] = directory
-            self.dlg.args['nweathers'] = i
         except Exception as e:
             log( e, pre='Weather Folder %s exception'%directory, level=2, msgBar=self.dlg.msgBar)
             restore()
 
-    def slot_fileWidget_weatherFile_fileChanged(self, filepath):
+    def slot_fileWidget_weatherFile_fileChanged(self, afile):
         def restore():
             self.dlg.fileWidget_weatherFile.blockSignals(True)
             self.dlg.fileWidget_weatherFile.setFilePath( self.project.absolutePath())
             self.dlg.fileWidget_weatherFile.blockSignals(False)
             self.dlg.radioButton_weatherConstant.setChecked(True)
         try:
-            df = read_csv( filepath)
-            if 'WS' not in df.columns or 'WD' not in df.columns or len(df)==0:
-                log(  os.path.basename(filepath)+' file does not contain them', pre='Missing WD or WS columns!', level=2, msgBar=self.dlg.msgBar)
-                restore()
-                return False
-            log( 'has WD & WS columns, %s hours (rows)'%len(df), pre=os.path.basename(filepath), level=4, msgBar=self.dlg.msgBar)
-            self.dlg.radioButton_weatherFile.setChecked(True)
-            self.dlg.state['radioButton_weatherFile'] = True
-            self.dlg.state['fileWidget_weatherFile'] = filepath
+            afile = Path(afile)
+            if fire2a_checks.weather_file(afile):
+                self.dlg.radioButton_weatherFile.setChecked(True)
+                self.dlg.state['radioButton_weatherFile'] = True
+                self.dlg.state['fileWidget_weatherFile'] = str(afile)
+                log('looks ok!', pre='Weather.csv', level=1, msgBar=self.dlg.msgBar)
+            else:
+                log(f'file {afile.parent} format problem', pre='Weather.csv', level=2, msgBar=self.dlg.msgBar)
         except Exception as e:
-            log( e, pre='Single .csv file %s exception'%filepath, level=2, msgBar=self.dlg.msgBar)
+            log(e, pre=f'Single Weather.csv file {afile} exception {e}', level=2, msgBar=self.dlg.msgBar)
             restore()
 
     def makeArgs(self):
@@ -857,7 +857,7 @@ class fire2amClass:
             ''' process logfile '''
             layerName = 'Ignition_Points'
             out_gpkg = Path( self.args['OutFolder'], layerName+'.gpkg')
-            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile2, on_finished=self.on_finished, 
+            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished, 
                     logText=logText, layerName=layerName, baseLayer=baseLayer, out_gpkg=out_gpkg)
             self.task['log'].taskCompleted.connect( partial( self.ui_addVectorLayer, out_gpkg, layerName, 'points_layerStyle.qml'))
             self.taskManager.addTask( self.task['log'])
