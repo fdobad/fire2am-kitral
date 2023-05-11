@@ -1,22 +1,26 @@
 #!/bin/env python3
 '''
+$cd C2FSB
+C2FSB$ python3 downstream_protection_value.py
+
+all functions are tested and plotted on main
+
 Calculate downstream protection value from Messages/MessagesFile<int>.csv files
 Each file has 4 columns: from cellId, to cellId, period when burns & hit ROS
 
-arbol= nx.subgraph(H, {i} | nx.descendants(H, i))
-
-https://networkx.org/documentation/networkx-1.8/reference/algorithms.shortest_paths.html
 https://github.com/fire2a/C2FK/blob/main/Cell2Fire/Heuristics.py
 
-(c) fire shortest traveling times
+https://networkx.org/documentation/networkx-1.8/reference/algorithms.shortest_paths.html
 
-RESULTS
+propagation tree: (c) fire shortest traveling times
+
+Performance review
 1. is faster to dijkstra than minimun spanning
 
     In [50]: %timeit shortest_propagation_tree(G,root)
     1.53 ms ± 5.47 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
     
-    In [51]: %timeit minimum_spanning_arborescence(G)
+    In [51]: %timeit nx.minimum_spanning_arborescence(G, attr='time')
     16.4 ms ± 61 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
 
 2. is faster numpy+add_edges than nx.from_csv
@@ -28,68 +32,54 @@ RESULTS
     3.35 ms ± 20 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
 
 2.1 even faster is you discard a column!!
-    In [65]: %timeit custom3(afile)
+    In [65]: %timeit digraph_from_messages(afile)
     1.84 ms ± 15.4 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
-
-
 
 '''
 import sys
 from pathlib import Path
 import re
+from osgeo import gdal
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
+def single_simulation_downstream_protection_value(msgfile = 'MessagesFile01.csv', pvfile = 'py.asc'):
+    """ load one diGraph count succesors """
+    msgG, root = digraph_from_messages(msgfile)
+    treeG = shortest_propagation_tree(msgG, root)
+    pv,W,H = get_flat_pv( pvfile)
+    #
+    dpv = np.zeros(pv.shape, dtype=pv.dtype)
+    i2n = [n for n in treeG]
+    mdpv = dpv_maskG(treeG, root, pv, i2n)
+    dpv[i2n] = mdpv
+    return mdpv, dpv
 
-
-def downstream_protection_value():
-    ''' load one diGraph count succesors '''
-    afile = Path.cwd() / 'MessagesFile01.csv'
-    G = nx.DiGraph() # pylint: disable=invalid-name
-    # 1
-    data_i, data_j = np.loadtxt( afile, delimiter=',', dtype=np.int32, usecols=(0,1), max_rows=100, unpack=True)
-    bunch = np.vstack(( data_i, data_j, [{'weight':0}]*len(data_i))).T
-    G.add_edges_from(bunch)
-    # 2
-    data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('t',np.int16)], usecols=(0,1,2))
-    G.add_edges_from(data)
-
-
-    G.nodes[root]['dpv'] = len(nx.descendants(G,root))
-    for s in G.successors(root):
-        print(s, np.sum(len(nx.descendants(G,s))))
-        G.nodes[s]['dpv'] = np.sum(len(nx.descendants(G,s)))
-
-def downtream_protection_value():
-    afile = Path.cwd() / 'MessagesFile01.csv'
-    G = nx.DiGraph() # pylint: disable=invalid-name
-    data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32)], usecols=(0,1))
-    G.add_edges_from(data)
-    for i in G.nodes:
-        G.nodes[i]['dpv'] = 0
-        G.nodes[i]['var'] = 1
-
-    for i in G.nodes:
-        arbol= nx.subgraph(G, {i} | nx.descendants(G, i))
-        print('an', arbol.nodes)
-        print('de', nx.descendants(G, i).add(i))
-        G.nodes[i]['dpv'] += np.sum([G.nodes[j]['var'] for j in arbol.nodes])
-        print(i,{i} | nx.descendants(G, i),G.nodes[i]['dpv'])
-    return G
-
-def single_source_dijkstra_path(file_list):
-    afile = file_list[0]
+def downstream_protection_value( out_dir, pvfile):
+    pv,W,H = get_flat_pv( pvfile)
+    dpv = np.zeros(pv.shape, dtype=pv.dtype)
+    file_list = read_files(out_dir)
+    for msgfile in file_list:
+        msgG, root = digraph_from_messages(msgfile)
+        treeG = shortest_propagation_tree(msgG, root)
+        i2n = [n for n in treeG] # TODO change to list(treeG)
+        mdpv = dpv_maskG(treeG, root, pv, i2n)
+        dpv[i2n] += mdpv
+        plot_pv( dpv, w=W, h=H)
+    return dpv/len(file_list)
 
 def canon3(afile):
     # NO IMPLEMENTADO
     G = nx.read_edgelist(path=afile, create_using=nx.DiGraph(), nodetype=np.int32, data=[('time', np.int16)], delimiter=',')
     return G
+
 def canon4(afile):
     G = nx.read_edgelist(path=afile, create_using=nx.DiGraph(), nodetype=np.int32, data=[('time', np.int16), ('ros', np.float32)], delimiter=',')
     return G
 
-def custom3(afile):
+def digraph_from_messages(afile):
+    #formerly named custom3
     data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
     root = data[0][0]
     G = nx.DiGraph()
@@ -107,23 +97,16 @@ def custom4(afile):
 
 def shortest_propagation_tree(G, root):
     ''' construct a tree with the all shortest path from root 
-        TODO try accumulating already added edges
-        TODO for i,node in enumerate(shopat[:-1]):
+        TODO try accumulating already added edges for checking before asigning should be faster?
     '''
     # { node : [root,...,node], ... }
     shortest_paths = nx.single_source_dijkstra_path(G, root, weight='time')
     del shortest_paths[root]
     T = nx.DiGraph()
     for node, shopat in shortest_paths.items():
-        len_shopat = len(shopat)
-        for i,node in enumerate(shopat):
-            if i+1<len_shopat:
-                T.add_edge(node,shopat[i+1])
+        for i,node in enumerate(shopat[:-1]):
+            T.add_edge(node,shopat[i+1])
     return T
-
-def minimum_spanning_arborescence(G):
-    return nx.minimum_spanning_arborescence(G, attr='time')
-
 
 def recursiveUp(G):
     ''' count up WTF!!!
@@ -143,30 +126,75 @@ def recursiveUp(G):
     for leaf in (x for x in G.nodes if G.out_degree(x)==0):
         count_up(G,leaf)
 
-def recuDown(G,root):
-    assert nx.is_tree(G), 'not tree'
+def dpv_maskG(G, root, pv, i2n=None):
+    """ calculate downstream protection value in a flat protection value raster
+        i2n = [n for n in treeG.nodes]
+        1. copies a slice of pv, only Graph nodes
+        2. recursively sums downstream for all succesors of the graph (starting from root)
+        3. returns the slice (range(len(G) indexed)
+        G must be a tree 
+    """
+    if not i2n:
+        i2n = [n for n in treeG]
+    mdpv = pv[i2n]
+    #assert mdpv.base is None ,'the slice is not a copy!'
+    def recursion( G, i, pv):
+        for j in G.successors(i):
+            mdpv[i2n.index(i)]+=recursion(G, j, pv)
+        return mdpv[i2n.index(i)]
+    recursion( G, root, pv)
+    return mdpv
+
+def add_dpv_graph(G, root, pv):
+    """ modifies the input Graph recursively:
+            1. sums pv into predecesor (or calling)
+            2. recursively sums downstream for all succesors
+            3. returns itself if no successors
+        G must be a tree with 'dv'
+        hence returns nothing
+    """
+    for n in G.nodes:
+        G.nodes[n]['dv']+=pv[n-1]
+    def recursion( G, i):
+        for j in G.successors(i):
+            G.nodes[i]['dv']+=recursion(G,j)
+        return G.nodes[i]['dv']
+    recursion( G, root)
+
+def sum_dpv_graph(T, root, pv):
+    """ returns a copy of T that:
+            1. sets pv into each node
+            2. recursively sums pv downstream
+        T must be a tree (not checked)
+    """
+    G = T.copy()
+    for i in G.nodes:
+        G.nodes[i]['dv']=pv[i-1]
+    def recursion( G, i):
+        for j in G.successors(i):
+            G.nodes[i]['dv']+=recursion(G,j)
+        return G.nodes[i]['dv']
+    recursion( G, root)
+    return G
+
+def count_downstream_graph(T, root) -> nx.DiGraph:
+    """ returns a new Graph with node values of the number of conected nodes downstream
+    """
+    assert nx.is_tree(T), 'not tree'
+    G = T.copy()
     for i in G.nodes:
         G.nodes[i]['dv']=1
-    def count_down( G, i):
+    def recursion( G, i):
         for j in G.successors(i):
-            G.nodes[i]['dv']+=count_down(G,j)
-        return G.nodes[i]['dv'] 
-    count_down(G,root)
-
-def not():
-    reviewed = set()
-    for t in times[::-1]:
-        for j in data['j'][ data['t'] == t]:
-            if j not in reviewed:
-                reviewed.add(j)
-                count_up(G,j)
-            #else:
-            #    print(j)
+            G.nodes[i]['dv']+=recursion(G,j)
+        return G.nodes[i]['dv']
+    recursion(G,root)
     return G
 
 def read_files(apath):
     ''' read all MessagesFile<int>.csv files from Messages directory
         return ordered pathlib filelist & simulation_number lists
+        TODO is it worth it to sort messages?
     ''' 
     directory = Path(apath,'Messages')
     file_name = 'MessagesFile'
@@ -179,13 +207,29 @@ def read_files(apath):
     file_list = np.array( file_list)[ asort]
     return file_list
 
-def plot(G, pos=None):
-    ''' matplotlib'''
+def get_flat_pv( afile):
+    """ opens the file with gdal as raster, get 1st band, flattens it
+        also returns width and height
+    """
+    dataset = gdal.Open(str(afile), gdal.GA_ReadOnly)
+    return dataset.GetRasterBand(1).ReadAsArray().ravel(), dataset.RasterXSize, dataset.RasterYSize
+
+def plot(G, pos=None, labels=None):
+    ''' matplotlib
+        TODO scientific format numeric labels
+    '''
     if not pos:
         pos = { node : [*id2xy(node)] for node in G.nodes}
+    if not labels:
+        labes = { node:node for node in G.nodes}
     plt.figure()
-    nx.draw_networkx(G, pos)#_edges(H, pos, alpha=0.3, edge_color="k")
-    plt.axis("off")
+    nx.draw(G, pos=pos, with_labels=False)
+    nx.draw_networkx_labels(G, pos=pos, labels=labels)
+    return plt.show()
+
+def plot_pv( pv, w=40, h=40):
+    mat = pv.reshape(h,w)
+    plt.matshow(mat)
     plt.show()
 
 def id2xy( idx, w=40, h=40):
@@ -195,12 +239,60 @@ def id2xy( idx, w=40, h=40):
 
 if __name__ == "__main__":
     if len(sys.argv)>1:
-        results_dir = sys.argv[1]
+        input_dir = sys.argv[1]
+        output_dir = sys.argv[2]
     else:
-        file_list = read_files(Path.cwd())
+        print('run in C2FSB folder')
+        input_dir = Path.cwd() / 'data'/ 'Hom_Fuel_101_40x40'
+        output_dir = Path.cwd() / 'examples' / 'Hom_Fuel'
+        assert input_dir.is_dir() and output_dir.is_dir()
+        file_list = read_files(output_dir )
+        pv,W,H = get_flat_pv( input_dir / 'py.asc')
+        #
+        # single simulation
+        #
         afile = file_list[0]
-        G, root = custom3(afile )
-        T = shortest_propagation_tree(G, root)
-        recuDown(T,root)
-        print('dpv is',T.nodes[root])
+        msgG, root = digraph_from_messages(afile )
+        pos = { node : [*id2xy(node)] for node in msgG}
+        treeG = shortest_propagation_tree(msgG, root)
+        # count
+        countG = count_downstream_graph(treeG, root)
+        countGv= { n:countG.nodes[n]['dv'] for n in countG }
+        plot(countG, pos=pos, labels=countGv)
+        # {'dv': 137} == 137 root connects all tree
+        assert countG.nodes[root]['dv'] == len(countG) ,'count_downstream at root is not the same as number of nodes!'
+        #
+        onev = np.ones( pv.shape)
+        #
+        # sum dpv=1
+        sumG = sum_dpv_graph(treeG, root, onev)
+        sumGv={ n:sumG.nodes[n]['dv'] for n in sumG }
+        plot(sumG, pos=pos, labels=sumGv)
+        assert np.all([ sumGv[n] == countGv[n] for n in treeG.nodes ]) ,'sum_dpv(pv=1) != countG values!'
+        #
+        # add dpv=1
+        addG = treeG.copy()
+        for n in addG.nodes:
+            addG.nodes[n]['dv']=0
+        add_dpv_graph( addG, root, onev)
+        addGv ={ n:addG.nodes[n]['dv'] for n in addG }
+        plot(addG, pos=pos, labels=addGv)
+        assert np.all([ addGv[n] == countGv[n] for n in treeG.nodes ]) ,'add_dpv(pv=1) != countG values!'
+        #
+        # cum dpv=1
+        dpv = np.zeros(pv.shape, dtype=pv.dtype)
+        i2n = [n for n in treeG]
+        mdpv = dpv_maskG(treeG, root, onev, i2n)
+        dpv[i2n] = mdpv
+        plot_pv( dpv, w=W, h=H)
+        assert np.all([ mdpv[i2n.index(n)] == countGv[n] for n in treeG.nodes ]) ,'dpv_maskG(pv=1) != countG values!'
+        #
+        # single full test
+        mdpv, dpv = single_simulation_downstream_protection_value(msgfile = afile, pvfile = input_dir / 'py.asc')
+        plot_pv( dpv, w=W, h=H)
+        plot(treeG, pos=pos, labels={n:np.format_float_scientific(dpv[n], precision=2) for n in treeG})
+        assert np.all(np.isclose(mdpv, dpv[i2n])) ,'dpv_maskG != dpvalues!'
+        #
+        # finally
+        downstream_protection_value( output_dir, pvfile = input_dir / 'py.asc')
 
