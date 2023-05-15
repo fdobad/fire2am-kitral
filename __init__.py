@@ -32,8 +32,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    requirements = Path(Path(__file__).parent,'requirements.txt').read_text().split()
-    #requirements = Path(Path.cwd(),'requirements.txt').read_text().split()
+    requirements = Path(Path(__file__).parent,'requirements_import_names.txt').read_text().split()
+    #requirements = Path(Path.cwd(),'requirements_import_names.txt').read_text().split()
     error=False
     not_found=[]
     for req in requirements:
