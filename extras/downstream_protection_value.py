@@ -66,7 +66,7 @@ def downstream_protection_value( out_dir, pvfile):
         i2n = [n for n in treeG] # TODO change to list(treeG)
         mdpv = dpv_maskG(treeG, root, pv, i2n)
         dpv[i2n] += mdpv
-        plot_pv( dpv, w=W, h=H)
+        # plot_pv( dpv, w=W, h=H)
     return dpv/len(file_list)
 
 def canon3(afile):
@@ -79,12 +79,12 @@ def canon4(afile):
     return G
 
 def digraph_from_messages(afile):
-    #formerly named custom3
-    data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
-    root = data[0][0]
-    G = nx.DiGraph()
-    G.add_weighted_edges_from(data)
-    return G, root
+    if afile.exists() and afile.stat().st_size > 0:
+        data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
+        root = data[0][0] # checkar que el primer valor del message sea el punto de ignición 
+        G = nx.DiGraph()
+        G.add_weighted_edges_from(data)
+        return G, root
 
 func = np.vectorize(lambda x,y:{'time':x,'ros':y})
 def custom4(afile):
@@ -136,6 +136,7 @@ def dpv_maskG(G, root, pv, i2n=None):
     """
     if not i2n:
         i2n = [n for n in treeG]
+
     mdpv = pv[i2n]
     #assert mdpv.base is None ,'the slice is not a copy!'
     def recursion( G, i, pv):
@@ -170,10 +171,12 @@ def sum_dpv_graph(T, root, pv):
     G = T.copy()
     for i in G.nodes:
         G.nodes[i]['dv']=pv[i-1]
+
     def recursion( G, i):
         for j in G.successors(i):
             G.nodes[i]['dv']+=recursion(G,j)
         return G.nodes[i]['dv']
+    
     recursion( G, root)
     return G
 
@@ -184,10 +187,12 @@ def count_downstream_graph(T, root) -> nx.DiGraph:
     G = T.copy()
     for i in G.nodes:
         G.nodes[i]['dv']=1
+
     def recursion( G, i):
         for j in G.successors(i):
             G.nodes[i]['dv']+=recursion(G,j)
         return G.nodes[i]['dv']
+    
     recursion(G,root)
     return G
 
@@ -238,61 +243,74 @@ def id2xy( idx, w=40, h=40):
     return idx%w, idx//w 
 
 if __name__ == "__main__":
-    if len(sys.argv)>1:
-        input_dir = sys.argv[1]
-        output_dir = sys.argv[2]
-    else:
-        print('run in C2FSB folder')
-        input_dir = Path.cwd() / 'data'/ 'Hom_Fuel_101_40x40'
-        output_dir = Path.cwd() / 'examples' / 'Hom_Fuel'
-        assert input_dir.is_dir() and output_dir.is_dir()
-        file_list = read_files(output_dir )
-        pv,W,H = get_flat_pv( input_dir / 'py.asc')
-        #
-        # single simulation
-        #
-        afile = file_list[0]
-        msgG, root = digraph_from_messages(afile )
-        pos = { node : [*id2xy(node)] for node in msgG}
-        treeG = shortest_propagation_tree(msgG, root)
-        # count
-        countG = count_downstream_graph(treeG, root)
-        countGv= { n:countG.nodes[n]['dv'] for n in countG }
-        plot(countG, pos=pos, labels=countGv)
-        # {'dv': 137} == 137 root connects all tree
-        assert countG.nodes[root]['dv'] == len(countG) ,'count_downstream at root is not the same as number of nodes!'
-        #
-        onev = np.ones( pv.shape)
-        #
-        # sum dpv=1
-        sumG = sum_dpv_graph(treeG, root, onev)
-        sumGv={ n:sumG.nodes[n]['dv'] for n in sumG }
-        plot(sumG, pos=pos, labels=sumGv)
-        assert np.all([ sumGv[n] == countGv[n] for n in treeG.nodes ]) ,'sum_dpv(pv=1) != countG values!'
-        #
-        # add dpv=1
-        addG = treeG.copy()
-        for n in addG.nodes:
-            addG.nodes[n]['dv']=0
-        add_dpv_graph( addG, root, onev)
-        addGv ={ n:addG.nodes[n]['dv'] for n in addG }
-        plot(addG, pos=pos, labels=addGv)
-        assert np.all([ addGv[n] == countGv[n] for n in treeG.nodes ]) ,'add_dpv(pv=1) != countG values!'
-        #
-        # cum dpv=1
-        dpv = np.zeros(pv.shape, dtype=pv.dtype)
-        i2n = [n for n in treeG]
-        mdpv = dpv_maskG(treeG, root, onev, i2n)
-        dpv[i2n] = mdpv
-        plot_pv( dpv, w=W, h=H)
-        assert np.all([ mdpv[i2n.index(n)] == countGv[n] for n in treeG.nodes ]) ,'dpv_maskG(pv=1) != countG values!'
-        #
-        # single full test
-        mdpv, dpv = single_simulation_downstream_protection_value(msgfile = afile, pvfile = input_dir / 'py.asc')
-        plot_pv( dpv, w=W, h=H)
-        plot(treeG, pos=pos, labels={n:np.format_float_scientific(dpv[n], precision=2) for n in treeG})
-        assert np.all(np.isclose(mdpv, dpv[i2n])) ,'dpv_maskG != dpvalues!'
-        #
-        # finally
-        downstream_protection_value( output_dir, pvfile = input_dir / 'py.asc')
+    # if len(sys.argv)>1:
+    #     input_dir = sys.argv[1]
+    #     output_dir = sys.argv[2]
+    # else:
+    print('run in C2FSB folder')
+    input_dir = Path.cwd() / 'data'
+    output_dir = Path.cwd() / 'results' 
+    print(input_dir, output_dir)
+    assert input_dir.is_dir() and output_dir.is_dir()
+
+    # abro el directorio de los messages como una lista con los nombres de los archivos
+    file_list = read_files(output_dir )
+
+    # agarrar la capa que ocuparemos como valor a proteger
+    ## pv: valores en riesgo
+    ## W: Width
+    ## H: Height
+    pv, W, H = get_flat_pv( input_dir / 'bp.asc')
+    
+    #
+    # single simulation
+    #
+    afile = file_list[0]
+    msgG, root = digraph_from_messages(afile )
+    pos = { node : [*id2xy(node)] for node in msgG}
+    treeG = shortest_propagation_tree(msgG, root)
+
+    # count the number of nodes downstream
+    countG = count_downstream_graph(treeG, root)
+
+    # asignar el número de nodos aguas abajo a cada nodo respectivamente
+    countGv= { n:countG.nodes[n]['dv'] for n in countG }
+    plot(countG, pos=pos, labels=countGv)
+    # {'dv': 137} == 137 root connects all tree
+    assert countG.nodes[root]['dv'] == len(countG) ,'count_downstream at root is not the same as number of nodes!'
+    #
+    onev = np.ones( pv.shape)
+    #
+    # sum dpv=1
+    sumG = sum_dpv_graph(treeG, root, onev)
+    sumGv={ n:sumG.nodes[n]['dv'] for n in sumG }
+    plot(sumG, pos=pos, labels=sumGv)
+    assert np.all([ sumGv[n] == countGv[n] for n in treeG.nodes ]) ,'sum_dpv(pv=1) != countG values!'
+    #
+    # add dpv=1
+    addG = treeG.copy()
+    for n in addG.nodes:
+        addG.nodes[n]['dv']=0
+    add_dpv_graph( addG, root, onev)
+    addGv ={ n:addG.nodes[n]['dv'] for n in addG }
+    plot(addG, pos=pos, labels=addGv)
+    assert np.all([ addGv[n] == countGv[n] for n in treeG.nodes ]) ,'add_dpv(pv=1) != countG values!'
+    #
+    # cum dpv=1
+    dpv = np.zeros(pv.shape, dtype=pv.dtype)
+    i2n = [n for n in treeG]
+    mdpv = dpv_maskG(treeG, root, onev, i2n)
+    dpv[i2n] = mdpv
+    plot_pv( dpv, w=W, h=H)
+    assert np.all([ mdpv[i2n.index(n)] == countGv[n] for n in treeG.nodes ]) ,'dpv_maskG(pv=1) != countG values!'
+    #
+    # single full test
+    mdpv, dpv = single_simulation_downstream_protection_value(msgfile = afile, pvfile = input_dir / 'bp.asc')
+    plot_pv( dpv, w=W, h=H)
+    plot(treeG, pos=pos, labels={n:np.format_float_scientific(dpv[n], precision=2) for n in treeG})
+    assert np.all(np.isclose(mdpv, dpv[i2n])) ,'dpv_maskG != dpvalues!'
+    #
+    # finally
+    dpv = downstream_protection_value( output_dir, pvfile = input_dir / 'bp.asc')
+    plot_pv( dpv, w=W, h=H)
 
