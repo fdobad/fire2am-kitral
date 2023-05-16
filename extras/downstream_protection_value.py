@@ -198,7 +198,7 @@ def read_files(apath):
     ''' 
     directory = Path(apath,'Messages')
     file_name = 'MessagesFile'
-    file_list = list( directory.glob( file_name+'[0-9]*.csv'))
+    file_list = [ f for f in directory.glob( file_name+'[0-9]*.csv') if f.exists() and f.stat().st_size > 0]
     file_string = ' '.join([ f.stem for f in file_list ])
     # sort
     sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
