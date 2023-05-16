@@ -190,8 +190,8 @@ def get_grouped_parser(parser):
     return args, groups
 
 import logging
-#logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
+#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 from qgis.core import Qgis, QgsMessageLog
 def log(*args, pre='', level=1, plugin=aName, msgBar=None):
