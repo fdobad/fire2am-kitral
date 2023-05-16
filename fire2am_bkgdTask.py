@@ -631,18 +631,12 @@ class after_downstream_protection_value(QgsTask):
         # loop add dpv
         QgsMessageLog.logMessage(f'{self.description()} looping through {nsim} files',MESSAGE_CATEGORY, Qgis.Info)
         for i,msgfile in enumerate(file_list):
-            QgsMessageLog.logMessage(f'{self.description()} 1 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             msgG, root = digraph_from_messages(msgfile)
-            QgsMessageLog.logMessage(f'{self.description()} 2 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             treeG = shortest_propagation_tree(msgG, root)
-            QgsMessageLog.logMessage(f'{self.description()} 3 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             i2n = [n-1 for n in treeG] # TODO change to generator?
-            QgsMessageLog.logMessage(f'{self.description()} 4 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             mdpv = dpv_maskG(treeG, root, self.pv, i2n)
-            QgsMessageLog.logMessage(f'{self.description()} 5 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             #TODO-1ok?
             self.dpv[i2n] += mdpv
-            QgsMessageLog.logMessage(f'{self.description()} 6 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
             self.setProgress((i+1)/nsim*100)
             if self.isCanceled():
                 QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
