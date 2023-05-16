@@ -116,8 +116,8 @@ def Parser2():
                         dest="GASelection",
                         default=False,
                         action="store_true")
-    firebreak.add_argument("--HarvestedCells",
-                        help="File with initial harvested cells (csv with year, number of cells: e.g 1,1,2,3,4,10)",
+    firebreak.add_argument("--FirebreakCells",
+                        help="File with initial firebreak cells (csv with year, number of cells: e.g 1,1,2,3,4,10)",
                         dest="HCells",
                         type=str,
                         default=None)
