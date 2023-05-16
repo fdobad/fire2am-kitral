@@ -21,6 +21,7 @@ from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import QVariant
 # pylint: enable=no-name-in-module
 # plugin
+from .extras.downstream_protection_value import digraph_from_messages, shortest_propagation_tree, dpv_maskG, get_flat_pv
 from .fire2am_utils import aName  # , log,
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
@@ -513,8 +514,8 @@ class after_betweenness_centrality(QgsTask):
         ''' make a graph with keys=simulations, weights=burnt time '''
         QgsMessageLog.logMessage(self.description()+' building MultiDiGraph',MESSAGE_CATEGORY, Qgis.Info)
         mdg = nx.MultiDiGraph()
+        func = np.vectorize(lambda x:{'weight':x})
         for k,dat in enumerate(self.data):
-            func = np.vectorize(lambda x:{'weight':x})
             # ebunch_to_add : container of 4-tuples (u, v, k, d) for an edge with data and key k
             bunch = np.vstack(( dat['i'], dat['j'], [k]*len(dat), func(dat['t']) )).T
             mdg.add_edges_from( bunch)
@@ -526,7 +527,9 @@ class after_betweenness_centrality(QgsTask):
         
         QgsMessageLog.logMessage(self.description()+' calculating betweenness_centrality k=int(5*sqrt(|G|))',MESSAGE_CATEGORY, Qgis.Info)
         # outputs {nodes:betweenness_centrality_float_value}
-        centrality = nx.betweenness_centrality(mdg, k=int(5*np.sqrt(mdg.number_of_nodes())), weight='weight')
+        #checks for raise ValueError("Sample larger than population or is negative")
+        ksample = np.min(( mdg.number_of_nodes(), int(5*np.sqrt(mdg.number_of_nodes()))))
+        centrality = nx.betweenness_centrality(mdg, k=ksample, weight='weight')
         #log(centrality, level=0)
 
         QgsMessageLog.logMessage(self.description()+' building resulting layer',MESSAGE_CATEGORY, Qgis.Info)
@@ -552,6 +555,107 @@ class after_betweenness_centrality(QgsTask):
         if result:
             QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
             #QgsMessageLog.logMessage(self.description()+' finished w/result %s data shape %s'%(result, self.data.shape), MESSAGE_CATEGORY, Qgis.Info)
+            ''' show layer '''
+            layer = self.iface.addRasterLayer('GPKG:'+str(self.gpkg)+':'+self.layer_name, self.layer_name)
+            minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
+            maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
+            rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+            '''
+            #log('shown... now storing rasters', pre=self.layerName, level=4, msgBar=self.dlg.msgBar)
+            # describe mean raster into table
+            st = stats.describe( meanData, axis=None)
+            #df = DataFrame( st, index=st._fields, columns=[self.layerName])
+            df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
+            # get current table add column, store, reset
+            bf = self.dlg.statdf
+            df = concat([bf,df], axis=1)
+            self.dlg.statdf = df
+            self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+            #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
+            # write all rasters to gpkg in subtask
+            if self.nsim > 1:
+                self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)
+                QgsApplication.taskManager().addTask( self.subTask)
+            else:
+                rmtree(self.directory)
+                QgsMessageLog.logMessage(self.description()+' done', MESSAGE_CATEGORY, Qgis.Info)
+            '''
+        else:
+            if self.exception is None:
+                QgsMessageLog.logMessage(self.description()+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
+            else:
+                QgsMessageLog.logMessage(self.description()+' Finished w/o result w exception %s'%self.exception, MESSAGE_CATEGORY, Qgis.Warning)
+                raise self.exception
+
+    def cancel(self):
+        QgsMessageLog.logMessage(self.description()+' was canceled', MESSAGE_CATEGORY, Qgis.Info)
+        super().cancel()
+
+class after_downstream_protection_value(QgsTask):
+    def __init__(self, description, iface, dlg, args, plugin_dir, fuel_layer, protection_value_layer=None):
+        super().__init__(description, QgsTask.CanCancel)
+        self.layer_name = description
+        self.exception = None
+        self.iface = iface
+        self.dlg = dlg
+        self.args = args
+        self.plugin_dir = plugin_dir
+        self.directory = self.args['OutFolder'] / 'Messages'
+        self.file_name = 'MessagesFile'
+        self.gpkg = self.args['OutFolder'] / (description+'.gpkg')
+        if protection_value_layer:
+            #TODO basename?
+            self.pv, self.W, self.H = get_flat_pv( protection_value_layer.publicSource())
+
+        else:
+            self.W = fuel_layer.width()
+            self.H = fuel_layer.height()
+            self.pv = np.ones(self.H*self.W)
+        self.crs = fuel_layer.crs()
+        self.extent = fuel_layer.extent()
+        self.dpv = np.zeros(self.H*self.W)
+
+    def run(self):
+        QgsMessageLog.logMessage(self.description()+' Started ',MESSAGE_CATEGORY, Qgis.Info)
+        # get filelist
+        file_list = [ f for f in self.directory.glob( self.file_name+'[0-9]*.csv') if f.stat().st_size > 0]
+        file_string = ' '.join([ f.stem for f in file_list ])
+        # sort by number
+        sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
+        asort = np.argsort( sim_num)
+        sim_num = sim_num[ asort]
+        file_list = np.array( file_list)[ asort]
+        # get stats
+        num_width = len(str(np.max( sim_num)))
+        nsim = len(sim_num)
+        # loop add dpv
+        QgsMessageLog.logMessage(f'{self.description()} looping through {nsim} files',MESSAGE_CATEGORY, Qgis.Info)
+        for i,msgfile in enumerate(file_list):
+            QgsMessageLog.logMessage(f'{self.description()} 1 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            msgG, root = digraph_from_messages(msgfile)
+            QgsMessageLog.logMessage(f'{self.description()} 2 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            treeG = shortest_propagation_tree(msgG, root)
+            QgsMessageLog.logMessage(f'{self.description()} 3 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            i2n = [n-1 for n in treeG] # TODO change to generator?
+            QgsMessageLog.logMessage(f'{self.description()} 4 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            mdpv = dpv_maskG(treeG, root, self.pv, i2n)
+            QgsMessageLog.logMessage(f'{self.description()} 5 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            #TODO-1ok?
+            self.dpv[i2n] += mdpv
+            QgsMessageLog.logMessage(f'{self.description()} 6 end loop {i}',MESSAGE_CATEGORY, Qgis.Info)
+            self.setProgress((i+1)/nsim*100)
+            if self.isCanceled():
+                QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                return False
+        self.dpv=self.dpv/nsim
+        QgsMessageLog.logMessage(f'{self.description()} creating raster',MESSAGE_CATEGORY, Qgis.Info)
+        #TODO nodata?
+        array2rasterFloat32( self.dpv.reshape(self.H,self.W), self.layer_name, self.gpkg, self.extent, self.crs)
+        return True
+
+    def finished(self, result):
+        if result:
+            QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
             ''' show layer '''
             layer = self.iface.addRasterLayer('GPKG:'+str(self.gpkg)+':'+self.layer_name, self.layer_name)
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue

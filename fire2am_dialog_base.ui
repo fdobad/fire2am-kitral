@@ -27,54 +27,6 @@
        <string>Landscape</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_1">
-       <item row="3" column="1">
-        <widget class="QgsMapLayerComboBox" name="layerComboBox_cbd">
-         <property name="allowEmptyLayer">
-          <bool>true</bool>
-         </property>
-         <property name="showCrs">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>cbh : Canopy Base Height</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QgsMapLayerComboBox" name="layerComboBox_fuels">
-         <property name="showCrs">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_8">
-         <property name="text">
-          <string>cbd : Canopy Bulk Density</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>model : Surface Fuel Model SB</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QgsMapLayerComboBox" name="layerComboBox_ccf">
-         <property name="allowEmptyLayer">
-          <bool>true</bool>
-         </property>
-         <property name="showCrs">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
        <item row="4" column="0">
         <widget class="QLabel" name="label_9">
          <property name="text">
@@ -99,6 +51,40 @@
          </property>
         </widget>
        </item>
+       <item row="4" column="1">
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_ccf">
+         <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>cbh : Canopy Base Height</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_fuels">
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_cbd">
+         <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_cbh">
          <property name="allowEmptyLayer">
@@ -106,6 +92,37 @@
          </property>
          <property name="showCrs">
           <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>cbd : Canopy Bulk Density</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>model : Surface Fuel Model SB</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QgsMapLayerComboBox" name="layerComboBox_pv">
+         <property name="allowEmptyLayer">
+          <bool>true</bool>
+         </property>
+         <property name="showCrs">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_18">
+         <property name="text">
+          <string>pv: Protection Value</string>
          </property>
         </widget>
        </item>
@@ -653,53 +670,27 @@ for (normal distribution)
        <string>Optional Rules</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="10" column="0" colspan="2">
-        <widget class="QLabel" name="label_3">
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_4">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>All simulation options are in the 2dary menu item 'all options'
-beware they override this whole window (dialog) options
-&amp; could cause unexpected, unexplained or not implemented effects
-or imposible configurations</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="spinBox_max_fire_periods">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
-         <property name="maximum">
-          <number>999999999</number>
-         </property>
-         <property name="value">
-          <number>72</number>
+         <property name="text">
+          <string>CPU threads: max is faster 
+but your computer might be unresponsive.
+Also hardware limited</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="0" colspan="2">
-        <spacer name="horizontalSpacer_6">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="8" column="0">
+        <widget class="QCheckBox" name="checkBox_OutIntensity">
+         <property name="text">
+          <string>Byram Intensity</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
        <item row="4" column="0">
         <widget class="QLabel" name="label_16">
@@ -708,22 +699,15 @@ or imposible configurations</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="0">
-        <widget class="QCheckBox" name="checkBox_OutFl">
+       <item row="9" column="0">
+        <widget class="QCheckBox" name="checkBox_OutRos">
          <property name="text">
-          <string>Flame Length</string>
+          <string>Hit ROS</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QCheckBox" name="checkBox_OutCrownConsumption">
-         <property name="text">
-          <string>Crown Fire Fuel Consumption</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0" colspan="2">
-        <spacer name="horizontalSpacer_3">
+       <item row="10" column="0" colspan="2">
+        <spacer name="horizontalSpacer_6">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
@@ -752,45 +736,26 @@ or imposible configurations</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0" colspan="2">
-        <spacer name="horizontalSpacer_4">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="7" column="0">
+        <widget class="QCheckBox" name="checkBox_OutFl">
+         <property name="text">
+          <string>Flame Length</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_4">
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="spinBox_max_fire_periods">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
-         <property name="text">
-          <string>CPU threads: max is faster 
-but your computer might be unresponsive.
-Also hardware limited</string>
+         <property name="maximum">
+          <number>999999999</number>
          </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QCheckBox" name="checkBox_OutCrown">
-         <property name="text">
-          <string>Crown Fire Scar</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <widget class="QCheckBox" name="checkBox_OutIntensity">
-         <property name="text">
-          <string>Byram Intensity</string>
+         <property name="value">
+          <number>72</number>
          </property>
         </widget>
        </item>
@@ -813,14 +778,52 @@ Also hardware limited</string>
          </property>
         </widget>
        </item>
-       <item row="8" column="0">
-        <widget class="QCheckBox" name="checkBox_OutRos">
+       <item row="0" column="0" colspan="2">
+        <spacer name="horizontalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="11" column="0" colspan="2">
+        <widget class="QLabel" name="label_3">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
-          <string>Hit ROS</string>
+          <string>All simulation options are in the 2dary menu item 'all options'
+beware they override this whole window (dialog) options
+&amp; could cause unexpected, unexplained or not implemented effects
+or imposible configurations</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item row="3" column="0" colspan="2">
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="6" column="0">
         <widget class="QCheckBox" name="checkBox_BurnProbability">
          <property name="enabled">
           <bool>false</bool>
@@ -833,10 +836,37 @@ Also hardware limited</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="9" column="1">
+        <widget class="QCheckBox" name="checkBox_OutCrownConsumption">
+         <property name="text">
+          <string>Crown Fire Fuel Consumption</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="checkBox_OutCrown">
+         <property name="text">
+          <string>Crown Fire Scar</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
         <widget class="QCheckBox" name="checkBox_betweennessCentrality">
          <property name="text">
           <string>Betweenness Centrality</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="checkBox_downstreamProtectionValue">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>If no protection value layer is given, 1s will be used</string>
+         </property>
+         <property name="text">
+          <string>Downstream Protection Value</string>
          </property>
         </widget>
        </item>

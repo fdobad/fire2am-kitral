@@ -55,7 +55,7 @@ from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 # pylint: enable=no-name-in-module
 
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality)
+from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality, after_downstream_protection_value)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
@@ -596,6 +596,7 @@ class fire2amClass:
         args.update( { o.objectName()[o.objectName().index('_')+1:]: o.isChecked()
             for o in self.dlg.findChildren( QCheckBox,
                                         options= Qt.FindChildrenRecursively) if o.isChecked()})
+        log(f'{args}',pre='args',msgBar=self.dlg.msgBar)
         args.pop('windDirection')
         args.pop('windSpeed')
         args.pop('windConstLen')
@@ -628,7 +629,8 @@ class fire2amClass:
         if 'OutCrown' in args.keys() or 'OutCrownConsumption' in args.keys():
             args['cros'] = True
         # 2e betweenness_centrality
-        if self.dlg.state['checkBox_betweennessCentrality']:
+        if self.dlg.state['checkBox_betweennessCentrality'] \
+           or self.dlg.state['checkBox_downstreamProtectionValue']:
             args['OutMessages'] = True
         # 3 discard default value args 
         popkeys = []
@@ -894,10 +896,19 @@ class fire2amClass:
         # modify or create proper qgsTask
 
         if Path(self.args['OutFolder'], 'Messages').is_dir():
-            log('processing', pre='Messages found!', level=4, msgBar=self.dlg.msgBar)
-            name = 'betweenness_centrality'
-            self.task[name] = after_betweenness_centrality( name, self.iface, self.dlg, self.args, 'Messages', 'MessagesFile', self.extent, self.crs, self.plugin_dir)
-            self.taskManager.addTask( self.task[name])
+            log('processing', pre='Messages found!', level=1, msgBar=self.dlg.msgBar)
+
+            if self.dlg.state['checkBox_betweennessCentrality']:
+                log('processing', pre='betweennessCentrality!', level=4, msgBar=self.dlg.msgBar)
+                name = 'betweennessCentrality'
+                self.task[name] = after_betweenness_centrality( name, self.iface, self.dlg, self.args, 'Messages', 'MessagesFile', self.extent, self.crs, self.plugin_dir)
+                self.taskManager.addTask( self.task[name])
+            if self.dlg.state['checkBox_downstreamProtectionValue']:
+                log('processing', pre='downstreamProtectionValue!', level=4, msgBar=self.dlg.msgBar)
+                name = 'downstreamProtectionValue'
+                self.task[name] = after_downstream_protection_value( name, self.iface, self.dlg, self.args, self.plugin_dir, self.dlg.state['layerComboBox_fuels'], self.dlg.state['layerComboBox_pv'])
+                self.taskManager.addTask( self.task[name])
+
 
     def on_finished(self, exception, value=None):
         ''' default finish qgs task '''

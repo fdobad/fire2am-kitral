@@ -43,6 +43,7 @@ from osgeo import gdal
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
+from logging import debug
 
 def single_simulation_downstream_protection_value(msgfile = 'MessagesFile01.csv', pvfile = 'py.asc'):
     """ load one diGraph count succesors """
@@ -51,7 +52,7 @@ def single_simulation_downstream_protection_value(msgfile = 'MessagesFile01.csv'
     pv,W,H = get_flat_pv( pvfile)
     #
     dpv = np.zeros(pv.shape, dtype=pv.dtype)
-    i2n = [n for n in treeG]
+    i2n = [n-1 for n in treeG]
     mdpv = dpv_maskG(treeG, root, pv, i2n)
     dpv[i2n] = mdpv
     return mdpv, dpv
@@ -63,7 +64,7 @@ def downstream_protection_value( out_dir, pvfile):
     for msgfile in file_list:
         msgG, root = digraph_from_messages(msgfile)
         treeG = shortest_propagation_tree(msgG, root)
-        i2n = [n for n in treeG] # TODO change to list(treeG)
+        i2n = np.array([n for n in treeG]) # TODO change to list(treeG)
         mdpv = dpv_maskG(treeG, root, pv, i2n)
         dpv[i2n] += mdpv
         # plot_pv( dpv, w=W, h=H)
@@ -82,12 +83,11 @@ def digraph_from_messages(afile):
     """ Not checking if file exists or if size > 0
         This is done previously on read_files
     """
-    if afile.exists() and afile.stat().st_size > 0:
-        data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
-        root = data[0][0] # checkar que el primer valor del message sea el punto de ignición 
-        G = nx.DiGraph()
-        G.add_weighted_edges_from(data)
-        return G, root
+    data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
+    root = data[0][0] # checkar que el primer valor del message sea el punto de ignición 
+    G = nx.DiGraph()
+    G.add_weighted_edges_from(data)
+    return G, root
 
 func = np.vectorize(lambda x,y:{'time':x,'ros':y})
 def custom4(afile):
@@ -137,16 +137,16 @@ def dpv_maskG(G, root, pv, i2n=None):
         3. returns the slice (range(len(G) indexed)
         G must be a tree 
     """
-    if not i2n:
-        i2n = [n for n in treeG]
-
+    if i2n is None:
+        i2n = [n-1 for n in treeG]
+    #-1 ok?
     mdpv = pv[i2n]
     #assert mdpv.base is None ,'the slice is not a copy!'
-    def recursion( G, i, pv):
+    def recursion( G, i, pv,mdpv,i2n):
         for j in G.successors(i):
-            mdpv[i2n.index(i)]+=recursion(G, j, pv)
-        return mdpv[i2n.index(i)]
-    recursion( G, root, pv)
+            mdpv[i2n.index(i-1)]+=recursion(G, j, pv,mdpv,i2n)
+        return mdpv[i2n.index(i-1)]
+    recursion( G, root, pv,mdpv,i2n)
     return mdpv
 
 def add_dpv_graph(G, root, pv):
@@ -301,11 +301,11 @@ if __name__ == "__main__":
     #
     # cum dpv=1
     dpv = np.zeros(pv.shape, dtype=pv.dtype)
-    i2n = [n for n in treeG]
+    i2n = [n-1 for n in treeG]
     mdpv = dpv_maskG(treeG, root, onev, i2n)
     dpv[i2n] = mdpv
     plot_pv( dpv, w=W, h=H)
-    assert np.all([ mdpv[i2n.index(n)] == countGv[n] for n in treeG.nodes ]) ,'dpv_maskG(pv=1) != countG values!'
+    assert np.all([ mdpv[i2n.index(n-1)] == countGv[n] for n in treeG.nodes ]) ,'dpv_maskG(pv=1) != countG values!'
     #
     # single full test
     mdpv, dpv = single_simulation_downstream_protection_value(msgfile = afile, pvfile = input_dir / 'bp.asc')
