@@ -79,6 +79,9 @@ def canon4(afile):
     return G
 
 def digraph_from_messages(afile):
+    """ Not checking if file exists or if size > 0
+        This is done previously on read_files
+    """
     if afile.exists() and afile.stat().st_size > 0:
         data = np.loadtxt( afile, delimiter=',', dtype=[('i',np.int32),('j',np.int32),('time',np.int16)], usecols=(0,1,2))
         root = data[0][0] # checkar que el primer valor del message sea el punto de ignición 
@@ -203,7 +206,7 @@ def read_files(apath):
     ''' 
     directory = Path(apath,'Messages')
     file_name = 'MessagesFile'
-    file_list = [ f for f in directory.glob( file_name+'[0-9]*.csv') if f.exists() and f.stat().st_size > 0]
+    file_list = [ f for f in directory.glob( file_name+'[0-9]*.csv') if f.stat().st_size > 0]
     file_string = ' '.join([ f.stem for f in file_list ])
     # sort
     sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
