@@ -64,7 +64,7 @@ def downstream_protection_value( out_dir, pvfile):
     for msgfile in file_list:
         msgG, root = digraph_from_messages(msgfile)
         treeG = shortest_propagation_tree(msgG, root)
-        i2n = np.array([n for n in treeG]) # TODO change to list(treeG)
+        i2n = [n-1 for n in treeG] # TODO change to list(treeG)
         mdpv = dpv_maskG(treeG, root, pv, i2n)
         dpv[i2n] += mdpv
         # plot_pv( dpv, w=W, h=H)
