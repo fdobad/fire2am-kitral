@@ -434,6 +434,7 @@ class check_weather_folder_bkgd(QgsTask):
         super().__init__(description, QgsTask.CanCancel)
         self.exception = None
         self.directory = Path(directory)
+        self.finished = False
         self.dlg = dlg
         self.nweathers = None
     def run(self):
@@ -492,6 +493,7 @@ class check_weather_folder_bkgd(QgsTask):
             self.dlg.fileWidget_weatherFolder.blockSignals(False)
             self.dlg.radioButton_weatherConstant.setChecked(True)
             log('at %s'%self.directory, pre='Bad Weathers Folder!', level=2, msgBar=self.dlg.msgBar)
+        self.finished = True
 
 def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
     QgsMessageLog.logMessage(task.description()+' Started ', MESSAGE_CATEGORY, Qgis.Info)

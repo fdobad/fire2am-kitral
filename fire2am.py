@@ -527,6 +527,12 @@ class fire2amClass:
 
     def slot_fileWidget_weatherFolder_fileChanged(self, directory):
         name = 'check_weather_folder_bkgd'
+        if name in self.task.keys():
+            if self.task[name].finished:
+                pass
+            elif self.task[name].status() not in [QgsTask.Complete, QgsTask.Terminated]:
+                log('cancel current checking first', pre='Weather Folder busy!', level=2, msgBar=self.dlg.msgBar)
+                return
         self.task[name] = check_weather_folder_bkgd( name, self.dlg, directory)
         self.taskManager.addTask( self.task[name])
 
