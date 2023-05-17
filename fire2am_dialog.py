@@ -71,6 +71,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.updateState()
         self.args = {}
         self.statdf = None
+        self.layerComboBoxes = { o.objectName():o for o in self.findChildren( QgsMapLayerComboBox, options= Qt.FindChildrenRecursively) }
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 

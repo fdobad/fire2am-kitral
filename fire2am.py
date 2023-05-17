@@ -46,7 +46,7 @@ from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
                        QgsMessageLog, QgsPointXY, QgsProject,
                        QgsRasterBandStats, QgsRasterLayer,
                        QgsTask, QgsVectorFileWriter, QgsVectorLayer,
-                       QgsWkbTypes)
+                       QgsWkbTypes, QgsMapLayerProxyModel)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings,
                               QTranslator, QVariant)
@@ -67,7 +67,7 @@ from .ParseInputs2 import Parser2
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          check_gdal_driver_name, matchPoints2Raster,
                          matchRasterCellIds2points, mergeVectorLayers,
-                         rasterRenderInterpolatedPseudoColor, writeVectorLayer, 
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer,
                          checkLayerPoints)
 
 # For debugging
@@ -127,6 +127,8 @@ class fire2amClass:
         self.project = None
         self.crs = None
         self.extent = None
+        self.W = None
+        self.H = None
         self.geopackage = None
 
         # QProcess
@@ -272,12 +274,23 @@ class fire2amClass:
 
     def first_start_setup(self):
         ''' layers default names '''
+        # layer only accept these types (not working in QtDesigner)
+        self.dlg.layerComboBox_fuels.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_elevation.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_cbd.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_cbh.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ccf.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_pv.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ignitionProbMap.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ignitionPoints.setFilters(QgsMapLayerProxyModel.PointLayer)
         #TODO check for each layerComboBox set if any layer_name matchs its regex else set to None.
         # extras/better_layerComboBox_matching.py
         layers_byName = { l.name():l for l in QgsProject.instance().mapLayers().values()}
         for lname,layer in layers_byName.items():
             if re.match( 'model.*asc', lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_fuels.setLayer(layer)
+                layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+                layer.triggerRepaint()
             elif re.match( 'mdt.*asc', lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_elevation.setLayer(layer)
             elif re.match( 'cbh', lname) and layer.type() == QgsMapLayerType.RasterLayer:
@@ -327,11 +340,12 @@ class fire2amClass:
         self.dlg.pushButton_restoreDefaults.pressed.connect(self.slot_restoreDefaults)
         self.dlg.pushButton_run.pressed.connect(self.run_All)
         ''' tab landscape '''
-        self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectRaster)
+        self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectFuelRaster)
         self.dlg.layerComboBox_elevation.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_cbh.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_cbd.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_ccf.layerChanged.connect( self.slot_trySelectRaster)
+        self.dlg.layerComboBox_pv.layerChanged.connect( self.slot_trySelectRaster)
         ''' tab ignitions ''' 
         self.dlg.layerComboBox_ignitionPoints.layerChanged.connect(self.slot_layerComboBox_ignitionPoints_layerChanged)
         self.dlg.layerComboBox_ignitionProbMap.layerChanged.connect( self.slot_trySelectRaster)
@@ -343,13 +357,11 @@ class fire2amClass:
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        #self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
         self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
         self.dlg.pushButton.pressed.connect(self.slot_doit)
         ''' tab tables '''
         ''' tab graphs '''
-        #self.dlg.comboBox_plot.currentIndexChanged.connect( self.showPlot)
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
 
     def slot_windRandomize(self):
@@ -359,7 +371,7 @@ class fire2amClass:
         self.dlg.spinBox_windSpeed.setValue(WS)
 
     def showPlot(self, index):
-        log('showing!!!', level=4)
+        log(f'Showing plot index {index}', level=0)
         self.dlg.plt.show(index)
 
     def run_Dialog(self):
@@ -375,7 +387,6 @@ class fire2amClass:
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.connect_slots()
-
         '''
         if QgsProject.instance().mapLayers() == {}:
             self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
@@ -392,7 +403,7 @@ class fire2amClass:
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
-        print('result',result)
+        log(f'dialog ran with result {result}',level=0)
         # See if OK was pressed
         if result:
             # Do something useful here - delete the line containing pass and
@@ -477,22 +488,49 @@ class fire2amClass:
             copy( ipm_layer.publicSource() , os.path.join(self.args['InFolder'],'py.asc'))
             log( 'ignitionProbMap copied', level=0, msgBar=self.dlg.msgBar)
 
+    def slot_trySelectFuelRaster(self, layer):
+        try:
+            if not layer:
+                return
+            layer_name = layer.name()
+            ret, val = check_gdal_driver_name( layer, driver_name='AAIGrid')
+            if not ret:
+                log(f'Selected fuel layer "{layer_name}" has incompatible "{val}" driver!', pre='Translate to AAIGrid!', level=3, msgBar=self.dlg.msgBar)
+                return
+            if layer.crs().isValid():
+                self.crs = layer.crs
+            else:
+                log(f'Selected fuel layer "{layer_name}" CRS not set!', pre='Fuel CRS!', level=2, msgBar=self.dlg.msgBar)
+                if QgsProject().instance().crs().isValid():
+                    self.crs = QgsProject().instance().crs
+                    layer.setCrs(self.crs())
+                    log(f'Defaulting to project CRS!', pre='Fuel CRS set from project!', level=2, msgBar=self.dlg.msgBar)
+                else:
+                    #Note maybe the program never reachs here!
+                    log(f'Neither the project nor the Fuel layer have a valid CRS!', pre='Must set CRSs!', level=2, msgBar=self.dlg.msgBar)
+                    self.crs = None
+            self.W = layer.width()
+            self.H = layer.height()
+            self.extent = layer.extent()
+            layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+            layer.triggerRepaint()
+            log(f'Fuel layer selected name:{layer_name}, W:{self.W}, H:{self.H}, crs:{self.crs().description()}, extent:{self.extent().asWktCoordinates()}', level=0)
+        except Exception as e:
+            log(f'"{e}" problem selecting "layer.name()"', pre='Fuel Exception!', level=3, msgBar=self.dlg.msgBar)
+
     def slot_trySelectRaster(self, layer):
         try:
             if not layer:
                 return
             name = self.dlg.sender().objectName()
-            if not layer.type() == QgsMapLayerType.RasterLayer:
-                log( '%s selected layer %s'%(name,layer.name()), pre='Not Raster!', level=2, msgBar=self.dlg.msgBar)
-                return
+            #if not layer.type() == QgsMapLayerType.RasterLayer:
+            #    log( '%s selected layer %s'%(name,layer.name()), pre='Not Raster!', level=2, msgBar=self.dlg.msgBar)
+            #    return
             ret, val = check_gdal_driver_name( layer, driver_name='AAIGrid')
             if not ret:
                 log( '%s selected layer %s has %s driver. Translate to AAIGrid!'%(name,layer.name(),val), pre='Not AAIGrid', level=2, msgBar=self.dlg.msgBar)
                 return
             log( '%s selected layer %s'%(name,layer.name()), pre='Is AAIGrid raster!' , level=4, msgBar=self.dlg.msgBar)
-            if name == 'layerComboBox_fuels':
-                layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
-                layer.triggerRepaint()
         except Exception as e:
             log(e, pre='%s selected layer %s Exception'%(name,layer.name()), level=3, msgBar=self.dlg.msgBar)
 
