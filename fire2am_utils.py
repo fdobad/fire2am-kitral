@@ -220,9 +220,9 @@ def log(*args, pre='', level=1, plugin=aName, msgBar=None):
 
     if level == 0:
         logging.debug( plugin+pre+args)
-        QgsMessageLog.logMessage( 'debug '+pre+args, plugin, level=Qgis.Info) 
+        QgsMessageLog.logMessage( 'DEBUG'+pre+args, plugin, level=Qgis.Info) 
         if msgBar:
-            msgBar.pushMessage( pre+'debug', args, level=Qgis.Info, duration=1)
+            msgBar.pushMessage( pre+'DEBUG', args, level=Qgis.Info, duration=1)
     elif level == 1:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Info) 
         logging.info( plugin+pre+args)

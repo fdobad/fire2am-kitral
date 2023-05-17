@@ -38,7 +38,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
         self.arg_str = None
         self.gen_args = None
         self.gen_cmd()
-        log('argparse init completed',self.gen_args,__name__)
+        log('argparse init completed',level=0)
 
     def setupUi(self):
         self.setWindowFlags( Qt.WindowCloseButtonHint | Qt.WindowMaximizeButtonHint)

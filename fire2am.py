@@ -268,12 +268,7 @@ class fire2amClass:
         self.argdlg.show()
         # Run the dialog event loop
         result = self.argdlg.exec_()
-        print('argdlg result',result)
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        log(f'argdlg closed with result {result}', level=0)
 
     def first_start_setup(self):
         ''' layers default names '''
