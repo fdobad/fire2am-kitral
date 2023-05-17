@@ -16,13 +16,14 @@ from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
                        QgsFeature, QgsField, QgsGeometry, QgsMessageLog,
                        QgsPointXY, QgsRasterBandStats, QgsRasterLayer,
                        QgsRectangle, QgsTask, QgsVectorFileWriter,
-                       QgsVectorLayer)
+                       QgsVectorLayer, QgsProject)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import QVariant
 # pylint: enable=no-name-in-module
 # plugin
 from .extras.downstream_protection_value import digraph_from_messages, shortest_propagation_tree, dpv_maskG, get_flat_pv
-from .fire2am_utils import aName  # , log,
+from .fire2am_utils import aName, log
+from . import fire2a_checks
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer)
@@ -428,15 +429,69 @@ def raster2vector_wTimestamp( layerName, rout_gpkg, vout_gpkg, extent, crs, dt):
         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
     QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, str(vout_gpkg), options)
 
-'''
-from datetime import datetime, timedelta
-class nextHour:
-    def __init__(self):
-        self.now = datetime.now()
-    def next(self):
-        self.now -= timedelta(hours=1)
-        return Timestamp(self.now).isoformat(timespec='seconds')
-'''
+class check_weather_folder_bkgd(QgsTask):
+    def __init__(self, description, dlg, directory):
+        super().__init__(description, QgsTask.CanCancel)
+        self.exception = None
+        self.directory = Path(directory)
+        self.dlg = dlg
+        self.nweathers = None
+    def run(self):
+        try:
+            self.setProgress(0)
+            QgsMessageLog.logMessage(self.description()+' run started', MESSAGE_CATEGORY, Qgis.Info)
+            if not self.directory.is_dir():
+                log(f'Is not a directory: {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                return False
+            if file_list:= list(self.directory.glob('Weather[0-9]*.csv')):
+                self.nweathers = len(file_list)
+                numbers = np.fromiter( re.findall( 'Weather([0-9]+)',
+                                ''.join([ f.stem for f in file_list])),
+                                dtype=np.int32, count=self.nweathers)
+                asort = np.argsort(numbers)
+                file_list = np.array(file_list)[asort]
+                numbers = numbers[asort]
+                for i,afile in enumerate(file_list):
+                    if i+1 != numbers[i]:
+                        log(f'weather file {afile} not sequentially numerated {i+1} in {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                        return False
+                    if not fire2a_checks.weather_file(str(afile)): #, quick=True
+                        log(f'bad weather file {afile} in {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                        return False
+                    if self.isCanceled():
+                        QgsMessageLog.logMessage(self.description()+' run was canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                        self.exception = Exception('run was canceled')
+                        return False
+                    self.setProgress((i+1)/self.nweathers*100)
+                QgsMessageLog.logMessage(self.description()+' run ended', MESSAGE_CATEGORY, Qgis.Info)
+                return True
+            return False
+        except Exception as e:
+            self.exception = e
+            return False
+    def cancel(self):
+        QgsMessageLog.logMessage(self.description()+' was canceled', MESSAGE_CATEGORY, Qgis.Info)
+        super().cancel()
+    def finished(self, result):
+        if self.exception:
+            QgsMessageLog.logMessage(self.description()+' Finished w exception %s'%self.exception, MESSAGE_CATEGORY, Qgis.Warning)
+            log(' Finished w exception %s'%self.exception, pre='Weathers Folder Check!', level=4, msgBar=self.dlg.msgBar)
+        elif result:
+            QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
+            self.dlg.args['nweathers'] = self.nweathers
+            self.dlg.radioButton_weatherFolder.setChecked(True)
+            self.dlg.state['radioButton_weatherFolder'] = True
+            self.dlg.fileWidget_weatherFolder.blockSignals(True)
+            self.dlg.fileWidget_weatherFolder.setFilePath( str(self.directory))
+            self.dlg.fileWidget_weatherFolder.blockSignals(False)
+            log('Found in %s'%self.directory, pre='Weathers[1..%s].csv'%self.dlg.args['nweathers'], level=4, msgBar=self.dlg.msgBar)
+        else:
+            self.dlg.fileWidget_weatherFolder.blockSignals(True)
+            self.dlg.args['nweathers'] = None
+            self.dlg.fileWidget_weatherFolder.setFilePath( QgsProject().instance().absolutePath())
+            self.dlg.fileWidget_weatherFolder.blockSignals(False)
+            self.dlg.radioButton_weatherConstant.setChecked(True)
+            log('at %s'%self.directory, pre='Bad Weathers Folder!', level=2, msgBar=self.dlg.msgBar)
 
 def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
     QgsMessageLog.logMessage(task.description()+' Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -604,9 +659,7 @@ class after_downstream_protection_value(QgsTask):
         self.file_name = 'MessagesFile'
         self.gpkg = self.args['OutFolder'] / (description+'.gpkg')
         if protection_value_layer:
-            #TODO basename?
             self.pv, self.W, self.H = get_flat_pv( protection_value_layer.publicSource())
-
         else:
             self.W = fuel_layer.width()
             self.H = fuel_layer.height()
@@ -685,3 +738,13 @@ class after_downstream_protection_value(QgsTask):
     def cancel(self):
         QgsMessageLog.logMessage(self.description()+' was canceled', MESSAGE_CATEGORY, Qgis.Info)
         super().cancel()
+'''
+from datetime import datetime, timedelta
+class nextHour:
+    def __init__(self):
+        self.now = datetime.now()
+    def next(self):
+        self.now -= timedelta(hours=1)
+        return Timestamp(self.now).isoformat(timespec='seconds')
+'''
+

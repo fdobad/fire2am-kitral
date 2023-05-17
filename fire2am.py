@@ -55,7 +55,7 @@ from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 # pylint: enable=no-name-in-module
 
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality, after_downstream_protection_value)
+from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality, after_downstream_protection_value, check_weather_folder_bkgd)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
@@ -307,17 +307,12 @@ class fire2amClass:
                 if fire2a_checks.weather_file(wfile):
                     self.dlg.fileWidget_weatherFile.setFilePath( str(wfile))
                     self.dlg.radioButton_weatherFile.setChecked(True)
-                    #self.slot_fileWidget_weatherFile_fileChanged( wfile)
             ''' weather folder '''
-            #TODO check wfolder in background
             wfolder = Path( apath, 'Weathers')
             if wfolder.is_dir():
-                if fire2a_checks.weather_folder(wfolder):
-                    log('wfolder.is_weather_folder',pre='checks',level=3)
-                    self.dlg.fileWidget_weatherFolder.setFilePath( str(wfolder))
-                    self.dlg.radioButton_weatherFolder.setChecked(True)
-                    self.dlg.args['nweathers'] = len(list(wfile.glob('Weather[0-9]*.csv')))
-                    #self.slot_fileWidget_weatherFolder_fileChanged(wfolder)
+                name = 'check_weather_folder_bkgd'
+                self.task[name] = check_weather_folder_bkgd( name, self.dlg, wfolder)
+                self.taskManager.addTask( self.task[name])
         ''' default values '''
         self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.dlg.spinBox_nthreads.setMaximum(cpu_count())
@@ -531,6 +526,11 @@ class fire2amClass:
             log( e, pre='Ignition Point layer exception!', level=2, msgBar=self.dlg.msgBar)
 
     def slot_fileWidget_weatherFolder_fileChanged(self, directory):
+        name = 'check_weather_folder_bkgd'
+        self.task[name] = check_weather_folder_bkgd( name, self.dlg, directory)
+        self.taskManager.addTask( self.task[name])
+
+    def old_slot_fileWidget_weatherFolder_fileChanged(self, directory):
         def restore():
             self.dlg.fileWidget_weatherFolder.blockSignals(True)
             self.dlg.fileWidget_weatherFolder.setFilePath( self.project.absolutePath())
@@ -538,7 +538,6 @@ class fire2amClass:
             self.dlg.radioButton_weatherConstant.setChecked(True)
             self.dlg.args['nweathers'] = 0
         try:
-            #TODO check in background
             if fire2a_checks.weather_folder(Path(directory)):
                 self.dlg.args['nweathers'] = len(list(Path(directory).glob('Weather[0-9]*.csv')))
                 self.dlg.radioButton_weatherFolder.setChecked(True)
