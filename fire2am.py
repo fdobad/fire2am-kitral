@@ -746,6 +746,12 @@ class fire2amClass:
                     if not ret:
                         log( '%s selected layer %s has %s driver. Translate to AAIGrid!'%(key, layer.name(),val), pre='Not AAIGrid', level=2, msgBar=self.dlg.msgBar)
                         return False
+                    if self.W != layer.width():
+                        log(f'layer {layer.name()} Width:{layer.width()} != {self.W} from fuels layer', pre='Raster Mismatch', level=3, msgBar=self.dlg.msgBar)
+                        return False
+                    if self.H != layer.height():
+                        log(f'layer {layer.name()} Height:{layer.height()} != {self.H} from fuels layer', pre='Raster Mismatch', level=3, msgBar=self.dlg.msgBar)
+                        return False
 
                 if layer.crs() == QgsCoordinateReferenceSystem():
                     log('has not been set for',layer.name(),'in', key, pre='CRS error', level=3, msgBar=self.dlg.msgBar)
@@ -764,8 +770,11 @@ class fire2amClass:
     def updateProject(self):
         self.now = datetime.now()
         self.project = QgsProject().instance()
-        self.crs = self.project.crs()
-        self.extent = self.dlg.state['layerComboBox_fuels'].extent()
+        layer = self.dlg.state['layerComboBox_fuels']
+        self.crs = layer.crs()
+        self.W = layer.width()
+        self.H = layer.height()
+        self.extent = layer.extent()
 
     def run_All(self):
         ''' run simulation '''
