@@ -444,7 +444,6 @@ def setInitialSelectedLayers():
                 self.dlg.cmb.setLayer(layer)
                 print(pattern, result.string)
 
-
 def slot_dummyResults(self):
     self.loadResults()
 
@@ -478,3 +477,26 @@ def slot_dummyResults(self):
     pdb.set_trace()
     #(Pdb) !import code; code.interact(local=dict(globals(), **locals()))
     '''
+
+def old_slot_fileWidget_weatherFolder_fileChanged(self, directory):
+    def restore():
+        self.dlg.fileWidget_weatherFolder.blockSignals(True)
+        self.dlg.fileWidget_weatherFolder.setFilePath( self.project.absolutePath())
+        self.dlg.fileWidget_weatherFolder.blockSignals(False)
+        self.dlg.radioButton_weatherConstant.setChecked(True)
+        self.dlg.args['nweathers'] = 0
+    try:
+        if fire2a_checks.weather_folder(Path(directory)):
+            self.dlg.args['nweathers'] = len(list(Path(directory).glob('Weather[0-9]*.csv')))
+            self.dlg.radioButton_weatherFolder.setChecked(True)
+            self.dlg.state['radioButton_weatherFolder'] = True
+            self.dlg.state['fileWidget_weatherFolder'] = directory
+            log('Found in %s'%directory, pre='Weathers[1..%s].csv'%self.dlg.args['nweathers'], level=4, msgBar=self.dlg.msgBar)
+        else:
+            log('Files must be a consecutive numbered sequence [1..N] or a file is wrong check log', pre='Weather[1..N].csv problem', level=2, msgBar=self.dlg.msgBar)
+            restore()
+            return
+    except Exception as e:
+        log( e, pre='Weather Folder %s exception'%directory, level=2, msgBar=self.dlg.msgBar)
+        restore()
+
