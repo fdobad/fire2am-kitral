@@ -272,6 +272,8 @@ class fire2amClass:
 
     def first_start_setup(self):
         ''' layers default names '''
+        #TODO check for each layerComboBox set if any layer_name matchs its regex else set to None.
+        # extras/better_layerComboBox_matching.py
         layers_byName = { l.name():l for l in QgsProject.instance().mapLayers().values()}
         for lname,layer in layers_byName.items():
             if re.match( 'model.*asc', lname) and layer.type() == QgsMapLayerType.RasterLayer:
@@ -295,6 +297,8 @@ class fire2amClass:
                 self.dlg.layerComboBox_ignitionProbMap.setLayer(layer)
             elif re.match( '[Ii]gnition.*[Pp]oint', lname) and layer.type() == QgsMapLayerType.VectorLayer and layer.wkbType() == QgsWkbTypes.Point:
                 self.dlg.layerComboBox_ignitionPoints.setLayer(layer)
+            elif re.match( '.*[Vv]alue.*', lname) and layer.type() == QgsMapLayerType.RasterLayer:
+                self.dlg.layerComboBox_pv.setLayer(layer)
         ''' weather file'''
         if apath := QgsProject.instance().absolutePath():
             wfile = Path( apath, 'Weather.csv')
