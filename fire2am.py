@@ -49,7 +49,7 @@ from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
                        QgsVectorLayer, QgsWkbTypes)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings,
-                              QTranslator, QVariant)
+                              QTranslator, QVariant, QTimer)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 from scipy import stats
@@ -147,18 +147,15 @@ class fire2amClass:
                             QProcess.ProcessState.Starting: 'Starting',
                             QProcess.ProcessState.Running: 'Running' }
         # QgsTask
-        self.task = {} 
+        self.task = {}
         self.taskManager = QgsApplication.taskManager()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
-
         We implement this ourselves since we do not inherit QObject.
-
         :param message: String for translation.
         :type message: str, QString
-
         :returns: Translated version of message.
         :rtype: QString
         """
@@ -270,13 +267,11 @@ class fire2amClass:
             self.iface.removeToolBarIcon(action)
 
     def run_Argparse(self):
-        """Run method that performs all the real work"""
+        """ Argparse dialog run method that performs all the real work"""
         if self.first_start_argparse == True:
             self.first_start_argparse = False
             self.argdlg = fire2amClassDialogArgparse()
-        # show the dialog
         self.argdlg.show()
-        # Run the dialog event loop
         result = self.argdlg.exec_()
         log(f'argdlg closed with result {result}', level=0)
 
@@ -354,7 +349,7 @@ class fire2amClass:
         self.dlg.layerComboBox_cbd.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_ccf.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_pv.layerChanged.connect( self.slot_trySelectRaster)
-        ''' tab ignitions ''' 
+        ''' tab ignitions '''
         self.dlg.layerComboBox_ignitionPoints.layerChanged.connect(self.slot_layerComboBox_ignitionPoints_layerChanged)
         self.dlg.layerComboBox_ignitionProbMap.layerChanged.connect( self.slot_trySelectRaster)
         ''' tab weather '''
@@ -384,39 +379,38 @@ class fire2amClass:
 
     def run_Dialog(self):
         """Run method that performs all the real work"""
-
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start_dialog == True:
-            self.first_start_dialog  = False
+            self.first_start_dialog = False
             self.dlg = fire2amClassDialog()
-            self.dlg.msgBar.pushMessage(aName+' tip:','Save the project beside raster files, then Restore Defaults', duration=0, level=Qgis.Info)
+            self.dlg.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
             self.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.connect_slots()
-        '''
-        if QgsProject.instance().mapLayers() == {}:
-            self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
-            log('Open a project with layers and restore defaults', pre='No layers found', level=3)
+        # removed check if they are layers present
+        #if QgsProject.instance().mapLayers() == {}:
+        #    self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
+        #    log('Open a project with layers and restore defaults', pre='No layers found', level=3)
+        #    return
+        # removed check if project changed
+        #if self.project != QgsProject().instance():
+        #    old = self.project
+        #    self.project = QgsProject().instance()
+        #    log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
+        #                          self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
+        # if project not saved
+        if QgsProject().instance().absolutePath() == '':
+            self.iface.messageBar().pushWarning(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...')
+            QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
             return
-
-        if self.project != QgsProject().instance():
-            old = self.project
-            self.project = QgsProject().instance()
-            log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
-                                  self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
-        '''
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
-        log(f'dialog ran with result {result}',level=0)
         # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        log(f'dialog ran with result {result}',level=0)
 
     def makeInstance(self):
         '''mkdir directory, TODO from:copy&paste files to:write layers as new files
@@ -431,16 +425,16 @@ class fire2amClass:
         copy( os.path.join( self.plugin_dir, 'spain_lookup_table.csv') , self.args['InFolder'])
         '''
         fuels'''
-        copy( self.dlg.state['layerComboBox_fuels'].publicSource() , 
+        copy( self.dlg.state['layerComboBox_fuels'].publicSource() ,
                 os.path.join( self.args['InFolder'], 'fuels.asc'))
         log( 'fuels copied',level=0, msgBar=self.dlg.msgBar)
-        ''' 
+        '''
         elevation cbh cbd ccf'''
         for name in ['elevation', 'cbh', 'cbd', 'ccf']:
             layer = self.dlg.state['layerComboBox_'+name]
             if layer:
                 if layer.type() == QgsMapLayerType.RasterLayer:
-                    copy( self.dlg.state['layerComboBox_'+name].publicSource() , 
+                    copy( self.dlg.state['layerComboBox_'+name].publicSource() ,
                         os.path.join( self.args['InFolder'], name+'.asc'))
                     log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
         '''
@@ -456,7 +450,7 @@ class fire2amClass:
             dt = [ (self.now + timedelta(hours=i)).isoformat(timespec='minutes') for i in range(nrows)]
             WD = [ self.dlg.state['spinBox_windDirection'] ] * nrows
             WS = [ self.dlg.state['spinBox_windSpeed'] ] * nrows
-            df = DataFrame( np.vstack((Instance,dt,WD,WS,FireScenario )).T, 
+            df = DataFrame( np.vstack((Instance,dt,WD,WS,FireScenario )).T,
                     columns=['Instance','datetime','WD','WS', 'FireScenario'])
             df.to_csv( os.path.join( self.args['InFolder'],'Weather.csv'), header=True, index=False)
             log( 'speed:%s direction:%s'%(WS,WD), pre='Constant Wind', level=4, msgBar=self.dlg.msgBar)
@@ -471,7 +465,7 @@ class fire2amClass:
             for filename in glob( self.dlg.state['fileWidget_weatherFolder']+sep+'Weather[0-9]*.csv'):
                 copy( filename, dst)
             log( 'weather folder copied', level=0, msgBar=self.dlg.msgBar)
-        ''' 
+        '''
         ignitions '''
         if self.dlg.state['radioButton_ignitionPoints']:
             ''' match layer points to raster layer coords, write Ignitions.csv with cell id '''
@@ -601,24 +595,24 @@ class fire2amClass:
 
     def makeArgs(self):
         ''' 0 empty args
-            1 update with dlg values from spinboxes 
+            1 update with dlg values from spinboxes
                 delete extra ui spinboxes helpers
             2 update with ui logic
             2a  weathers
             2b  ignitions
             2c  nsims
             3 delete default args
-            4 update with argparse dialog 
+            4 update with argparse dialog
                 if opened: with true clicked boxes
                 set In|OutFolders = Instance+now
-            5 generate command line string 
+            5 generate command line string
         '''
         # 0
         args = {}
         gen_cmd = ''
         # 1
-        args.update( { o.objectName()[o.objectName().index('_')+1:]: o.value() 
-            for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox), 
+        args.update( { o.objectName()[o.objectName().index('_')+1:]: o.value()
+            for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox),
                                         options= Qt.FindChildrenRecursively)})
         args.update( { o.objectName()[o.objectName().index('_')+1:]: o.isChecked()
             for o in self.dlg.findChildren( QCheckBox,
@@ -659,13 +653,13 @@ class fire2amClass:
         if self.dlg.state['checkBox_betweennessCentrality'] \
            or self.dlg.state['checkBox_downstreamProtectionValue']:
             args['OutMessages'] = True
-        # 3 discard default value args 
+        # 3 discard default value args
         popkeys = []
         for dkey in self.default_args:
             for akey in args:
                 if dkey == akey and self.default_args[dkey] == args[akey]:
                     popkeys += [akey]
-        for akey in popkeys: 
+        for akey in popkeys:
             args.pop(akey)
         log('make args step 3',args, level=0)
         # 4 update argparse dialog
@@ -700,7 +694,7 @@ class fire2amClass:
                     else:
                         gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + sep + ' '
         self.args = args
-        self.gen_cmd = gen_cmd 
+        self.gen_cmd = gen_cmd
         log('make args step 5',args, level=0)
         log('make args step 5',gen_cmd, level=0)
 
@@ -895,7 +889,7 @@ class fire2amClass:
             ''' process logfile '''
             layerName = 'Ignition_Points'
             out_gpkg = Path( self.args['OutFolder'], layerName+'.gpkg')
-            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished, 
+            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished,
                     logText=logText, layerName=layerName, baseLayer=baseLayer, out_gpkg=out_gpkg)
             self.task['log'].taskCompleted.connect( partial( self.ui_addVectorLayer, out_gpkg, layerName, 'points_layerStyle.qml'))
             self.taskManager.addTask( self.task['log'])
@@ -917,13 +911,13 @@ class fire2amClass:
                 'OutRos'              in self.args.keys(),
                 'OutCrownConsumption' in self.args.keys() and 'cros' in self.args.keys(),
                 'OutCrown'            in self.args.keys() and 'cros' in self.args.keys()]
-        dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire'] 
+        dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire']
         fileNames = ['FL', 'Intensity', 'ROSFile', 'Cfb', 'Crown']
         layerNames = ['Flame_Length', 'Byram_Intensity', 'Hit_RateOfSpread', 'CrownFire_FuelConsumptionRatio', 'CrownFire_Scar']
         ''' background tasks '''
         for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
             if do:
-                if Path(self.args['OutFolder'], dn).is_dir(): 
+                if Path(self.args['OutFolder'], dn).is_dir():
                     self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
                     self.taskManager.addTask( self.task[ln])
                 else:
@@ -1054,14 +1048,3 @@ class QProcessQsgMsgLog(QProcess):
         output = bytes(output).decode("utf8")
         QgsMessageLog.logMessage(output, MSGCAT, Qgis.Info)
 
-'''
-if QgsProject().instance().absolutePath() == '':
-    iface.actionSaveProject().trigger()
-else:
-    print('lready',QgsProject().instance().absolutePath())
-
-  timer = QTimer()
-  timer.timeout.connect(lambda: print("hello"))
-  timer.singleShot(3000)
-
-'''
