@@ -24,6 +24,7 @@
 """
 import os.path
 import re
+import stat
 import sys
 from datetime import datetime, timedelta
 from functools import partial
@@ -31,44 +32,49 @@ from glob import glob
 from multiprocessing import cpu_count
 from os import sep
 from pathlib import Path
+from platform import system as plt_sys
 from shlex import split as shlex_split
 from shutil import copy
-import networkx as nx
 
-from scipy import stats
+import networkx as nx
 import numpy as np
 import processing
-
 from pandas import DataFrame, Series, Timestamp, concat, read_csv
 # pylint: disable=no-name-in-module
 from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
-                       QgsFeature, QgsField, QgsGeometry, QgsMapLayerType,
-                       QgsMessageLog, QgsPointXY, QgsProject,
-                       QgsRasterBandStats, QgsRasterLayer,
-                       QgsTask, QgsVectorFileWriter, QgsVectorLayer,
-                       QgsWkbTypes, QgsMapLayerProxyModel)
+                       QgsFeature, QgsField, QgsGeometry,
+                       QgsMapLayerProxyModel, QgsMapLayerType, QgsMessageLog,
+                       QgsPointXY, QgsProject, QgsRasterBandStats,
+                       QgsRasterLayer, QgsTask, QgsVectorFileWriter,
+                       QgsVectorLayer, QgsWkbTypes)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings,
                               QTranslator, QVariant)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
-# pylint: enable=no-name-in-module
+from scipy import stats
 
+from . import fire2a_checks
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality, after_downstream_protection_value, check_weather_folder_bkgd)
+from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
+                               after_downstream_protection_value,
+                               after_ForestGrid, afterTask_logFile,
+                               check_weather_folder_bkgd)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
-from .fire2am_utils import check as fdoCheck
 from .fire2am_utils import aName, get_params, log #, randomDataFrame
-from . import fire2a_checks
+from .fire2am_utils import check as fdoCheck
 # Initialize Qt resources from file resources.py
-from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
+from .img.resources import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
-from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
-                         check_gdal_driver_name, matchPoints2Raster,
-                         matchRasterCellIds2points, mergeVectorLayers,
-                         rasterRenderInterpolatedPseudoColor, writeVectorLayer,
-                         checkLayerPoints)
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+                         check_gdal_driver_name, checkLayerPoints, id2xy,
+                         matchPoints2Raster, matchRasterCellIds2points,
+                         mergeVectorLayers,
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
+
+# pylint: enable=no-name-in-module
+
 
 # For debugging
 #import pdb
@@ -112,6 +118,8 @@ class fire2amClass:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Fire Simulator Analytics Management')
+        if plt_sys()!='Windows':
+            os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -382,7 +390,7 @@ class fire2amClass:
         if self.first_start_dialog == True:
             self.first_start_dialog  = False
             self.dlg = fire2amClassDialog()
-            self.dlg.msgBar.pushMessage(aName+' Hello World!','Keep a project with layers open when interacting', duration=-1, level=Qgis.Info)
+            self.dlg.msgBar.pushMessage(aName+' tip:','Save the project beside raster files, then Restore Defaults', duration=0, level=Qgis.Info)
             self.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
@@ -499,11 +507,13 @@ class fire2amClass:
                 return
             if layer.crs().isValid():
                 self.crs = layer.crs
+                self.extent = layer.extent
             else:
                 log(f'Selected fuel layer "{layer_name}" CRS not set!', pre='Fuel CRS!', level=2, msgBar=self.dlg.msgBar)
                 if QgsProject().instance().crs().isValid():
                     self.crs = QgsProject().instance().crs
                     layer.setCrs(self.crs())
+                    self.extent = layer.extent
                     log(f'Defaulting to project CRS!', pre='Fuel CRS set from project!', level=2, msgBar=self.dlg.msgBar)
                 else:
                     #Note maybe the program never reachs here!
@@ -511,12 +521,11 @@ class fire2amClass:
                     self.crs = None
             self.W = layer.width()
             self.H = layer.height()
-            self.extent = layer.extent()
             layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
             layer.triggerRepaint()
             log(f'Fuel layer selected name:{layer_name}, W:{self.W}, H:{self.H}, crs:{self.crs().description()}, extent:{self.extent().asWktCoordinates()}', level=0)
         except Exception as e:
-            log(f'"{e}" problem selecting "layer.name()"', pre='Fuel Exception!', level=3, msgBar=self.dlg.msgBar)
+            log(f'"{e}" problem selecting "{layer.name()}"', pre='Fuel Exception!', level=3, msgBar=self.dlg.msgBar)
 
     def slot_trySelectRaster(self, layer):
         try:
@@ -936,7 +945,6 @@ class fire2amClass:
                 self.task[name] = after_downstream_protection_value( name, self.iface, self.dlg, self.args, self.plugin_dir, self.dlg.state['layerComboBox_fuels'], self.dlg.state['layerComboBox_pv'])
                 self.taskManager.addTask( self.task[name])
 
-
     def on_finished(self, exception, value=None):
         ''' default finish qgs task '''
         if not exception:
@@ -961,3 +969,99 @@ class fire2amClass:
         self.makeArgs()
         '''
         layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+
+
+ExitStatus = {0:'CrashExit',
+              1:'NormalExit'}
+#state()
+ProcessState = {0:'NotRunning',
+                1:'Running',
+                2:'Starting'}
+#error()
+ProcessError = {0:'Crashed',
+                1:'FailedToStart',
+                2:'ReadError',
+                3:'Timedout',
+                4:'UnknownError',
+                5:'WriteError'}
+
+class QProcessQsgMsgLog(QProcess):
+    def __init__(self, parent=None, apath=None, plugin_dir=None):
+        super().__init__(parent)
+        self.finished.connect(self.on_finished)
+        self.setInputChannelMode(QProcess.ForwardedInputChannel)
+        self.setProcessChannelMode( QProcess.SeparateChannels)
+        self.readyReadStandardOutput.connect(self.on_ready_read_standard_output)
+        self.readyReadStandardError.connect(self.on_ready_read_standard_error)
+        #self.proc.stateChanged.connect(self.externalProcess_handle_state)
+        #self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
+        self.setWorkingDirectory( str(plugin_dir/'exiftool'))
+        self.apath = apath
+        self.plugin_dir = plugin_dir
+        self.display_stdout = True
+        self.fin = False
+
+    def toggle_stderr(self, enable):
+        if enable:
+            self.readyReadStandardError.connect(self.on_ready_read_standard_error)
+        else:
+            self.readyReadStandardError.disconnect()
+
+    def start(self, command, apath):
+        super().start(command)
+        self.apath = apath
+        self.stdout_file = open( self.apath/'exiftool_output.csv', "wb")
+        QgsMessageLog.logMessage(f"QProcess started, state: {ProcessState[self.state()]}", MSGCAT, Qgis.Info)
+        #self.waitForStarted()
+        #self.write(b'\r')
+        #QgsMessageLog.logMessage(f" b\\r sent {ProcessState[self.state()]}", MSGCAT, Qgis.Info)
+
+    def terminate(self):
+        process_code = self.state()
+        if process_code != QProcess.ProcessState.NotRunning:
+            QgsMessageLog.logMessage(f"QProcess terminating, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
+            self.terminate()
+        else:
+            QgsMessageLog.logMessage(f"QProcess can't terminate, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
+
+    def on_finished(self):
+        self.stdout_file.close()
+        exit_code = self.exitCode()
+        if exit_code==QProcess.ExitStatus.NormalExit:
+            QgsMessageLog.logMessage("QProcess finished with NormalExit status", MSGCAT, Qgis.Info)
+            QgsMessageLog.logMessage('Extracted metadata to exiftool_output.csv', MSGCAT , Qgis.Info)
+            #TODO check if import csv exists, compare nans length to files
+            proc_exiftool_output(self.apath)
+            QgsMessageLog.logMessage('Processed metadata to import_me.csv', MSGCAT, Qgis.Info)
+            layer_from_file( self.apath, self.plugin_dir)
+            QgsMessageLog.logMessage('Loaded layer', MSGCAT, Qgis.Info)
+            QgsMessageLog.logMessage('All Done', MSGCAT, Qgis.Success)
+        elif exit_code==QProcess.ExitStatus.CrashExit:
+            QgsMessageLog.logMessage(f"QProcess ProcessError {ProcessError[self.error()]}", MSGCAT, Qgis.Critical)
+        else:
+            QgsMessageLog.logMessage("QProcess finished with unknown ExitStatus!!", MSGCAT, Qgis.Critical)
+        self.fin = True
+
+    def on_ready_read_standard_output(self):
+        output = self.readAllStandardOutput()
+        self.stdout_file.write(output)
+        if self.display_stdout:
+            output = bytes(output).decode("utf8")
+            QgsMessageLog.logMessage(output, MSGCAT, Qgis.Info)
+
+    def on_ready_read_standard_error(self):
+        output = self.readAllStandardError()
+        output = bytes(output).decode("utf8")
+        QgsMessageLog.logMessage(output, MSGCAT, Qgis.Info)
+
+'''
+if QgsProject().instance().absolutePath() == '':
+    iface.actionSaveProject().trigger()
+else:
+    print('lready',QgsProject().instance().absolutePath())
+
+  timer = QTimer()
+  timer.timeout.connect(lambda: print("hello"))
+  timer.singleShot(3000)
+
+'''
