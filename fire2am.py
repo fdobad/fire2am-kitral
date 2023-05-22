@@ -402,7 +402,7 @@ class fire2amClass:
         #                          self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
         # if project not saved
         if QgsProject().instance().absolutePath() == '':
-            self.iface.messageBar().pushWarning(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...')
+            self.iface.messageBar().pushMessage(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...', level=2, duration=2)
             QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
             return
         # show the dialog
