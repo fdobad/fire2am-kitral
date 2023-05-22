@@ -412,35 +412,43 @@ class fire2amClass:
         # See if OK was pressed
         log(f'dialog ran with result {result}',level=0)
 
+
     def makeInstance(self):
-        '''mkdir directory, TODO from:copy&paste files to:write layers as new files
+        ''' write instance (exiting in each point if something fails)
+                check args['inFolder'] is new
+                copy fuel definition csv
+                copy fuel raster file
+                if exists, copy elevation, cbh, cbd, ccf layers file
+                weather choosen:
+                    file : copy file
+                    folder: copy folder
+                    constant: make csv
+                ignition choosen:
+                    point : make ignitions.csv
+                    probability map: copy file
         '''
+        # inFolder
         if os.path.isdir( self.args['InFolder']):
             log( 'directory named %s, stopping!'%self.args['InFolder'], pre='Already Exists!', level=3, msgBar=self.dlg.msgBar)
             return
         os.mkdir( self.args['InFolder'])
         log( self.args['InFolder'],pre='Created directory',level=0, msgBar=self.dlg.msgBar)
-        '''
-        spain look up table'''
+        # fuel definition
         copy( os.path.join( self.plugin_dir, 'spain_lookup_table.csv') , self.args['InFolder'])
-        '''
-        fuels'''
+        # fuels layer
         copy( self.dlg.state['layerComboBox_fuels'].publicSource() ,
                 os.path.join( self.args['InFolder'], 'fuels.asc'))
         log( 'fuels copied',level=0, msgBar=self.dlg.msgBar)
-        '''
-        elevation cbh cbd ccf'''
-        for name in ['elevation', 'cbh', 'cbd', 'ccf']:
+        # layers elevation cbh cbd ccf pv
+        for name in ['elevation', 'cbh', 'cbd', 'ccf', 'pv']:
             layer = self.dlg.state['layerComboBox_'+name]
             if layer:
-                if layer.type() == QgsMapLayerType.RasterLayer:
-                    copy( self.dlg.state['layerComboBox_'+name].publicSource() ,
-                        os.path.join( self.args['InFolder'], name+'.asc'))
-                    log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
-        '''
-        weather'''
+                copy( self.dlg.state['layerComboBox_'+name].publicSource(),
+                      os.path.join( self.args['InFolder'], name+'.asc'))
+                log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
+        # weather 
+        # weather constant : read dial and slider to generate Weather.csv
         if self.dlg.state['radioButton_weatherConstant']:
-            ''' read dial and slider to generate Weather.csv '''
             nrows = self.dlg.state['spinBox_windConstLen']
             iname = QgsProject().instance().baseName()
             if iname == '':
@@ -454,41 +462,40 @@ class fire2amClass:
                     columns=['Instance','datetime','WD','WS', 'FireScenario'])
             df.to_csv( os.path.join( self.args['InFolder'],'Weather.csv'), header=True, index=False)
             log( 'speed:%s direction:%s'%(WS,WD), pre='Constant Wind', level=4, msgBar=self.dlg.msgBar)
+        # weather file
         elif self.dlg.state['radioButton_weatherFile']:
-            ''' copy weather file '''
             copy( self.dlg.state['fileWidget_weatherFile'], os.path.join( self.args['InFolder'], 'Weather.csv'))
             log( 'weather file copied', level=0, msgBar=self.dlg.msgBar)
+        # weather folder
         elif self.dlg.state['radioButton_weatherFolder']:
-            ''' copy weather folder '''
             dst = os.path.join( self.args['InFolder'],'Weathers')
             os.mkdir(dst)
             for filename in glob( self.dlg.state['fileWidget_weatherFolder']+sep+'Weather[0-9]*.csv'):
                 copy( filename, dst)
             log( 'weather folder copied', level=0, msgBar=self.dlg.msgBar)
-        '''
-        ignitions '''
+        # ignition
+        # ignition point : match layer points to raster layer coords, write Ignitions.csv with cell id
         if self.dlg.state['radioButton_ignitionPoints']:
-            ''' match layer points to raster layer coords, write Ignitions.csv with cell id '''
             points = self.dlg.state['layerComboBox_ignitionPoints']
             raster = self.dlg.state['layerComboBox_fuels']
-            ''' match '''
             cellIds, _, _ = matchPoints2Raster( raster, points)
             Ncell = [ c+1 for c in cellIds ]
             if not Ncell:
                 log( 'for %s into fuel raster (check crs)'%points.name(), pre='No matching point', level=3, msgBar=self.dlg.msgBar)
                 return
-            # TODO simulator accepts more than 1 point
+            # TODO make the simulator accept more than 1 point
             #data = { 'Year':None, 'Ncell': Ncell }
             data = { 'Year':1, 'Ncell': [Ncell[0]] }
             df = DataFrame.from_dict( data)
             #df.fillna(1, inplace=True)
             df.to_csv( os.path.join( self.args['InFolder'],'Ignitions.csv'), header=True, index=False)
             log( 'written', pre='Ignition points', level=0, msgBar=self.dlg.msgBar)
-
+        # ignition prob map
         elif self.dlg.state['radioButton_ignitionProbMap']:
-            ipm_layer = self.dlg.state['layerComboBox_ignitionProbMap']
-            copy( ipm_layer.publicSource() , os.path.join(self.args['InFolder'],'py.asc'))
+            copy( self.dlg.state['layerComboBox_ignitionProbMap'].publicSource(),
+                  os.path.join(self.args['InFolder'],'py.asc'))
             log( 'ignitionProbMap copied', level=0, msgBar=self.dlg.msgBar)
+        log( 'makeInstance ok!', level=0, msgBar=self.dlg.msgBar)
 
     def slot_trySelectFuelRaster(self, layer):
         try:
