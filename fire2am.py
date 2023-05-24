@@ -421,7 +421,7 @@ class fire2amClass:
         self.dlg.fileWidget_weatherFile.fileChanged.connect( self.slot_fileWidget_weatherFile_fileChanged)
         self.dlg.fileWidget_weatherFolder.fileChanged.connect( self.slot_fileWidget_weatherFolder_fileChanged)
         self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
-        #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
+        self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
@@ -438,6 +438,14 @@ class fire2amClass:
         if not Path(self.dlg.fileWidget_weatherFile.filePath()).is_file():
             self.dlg.radioButton_weatherConstant.setChecked(True)
             log('Select a file first before selecting!',pre='No Weather File!',level=2, msgBar=self.dlg.msgBar, duration=1)
+
+    def slot_radioButton_weatherFolder_clicked(self):
+        """ When the raidioButton is selected, check if there's a directory on the fileWidget
+            else change to weatherConstant
+        """
+        if not Path(self.dlg.fileWidget_weatherFolder.filePath()).is_dir() or self.dlg.fileWidget_weatherFolder.filePath()=='':
+            self.dlg.radioButton_weatherConstant.setChecked(True)
+            log('Select a directory first before selecting!',pre='No Weather Folder!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
     def makeInstance(self):
         ''' write instance (exiting in each point if something fails)
