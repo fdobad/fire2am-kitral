@@ -417,6 +417,8 @@ class fire2amClass:
         ''' tab ignitions '''
         self.dlg.layerComboBox_ignitionPoints.layerChanged.connect(self.slot_layerComboBox_ignitionPoints_layerChanged)
         self.dlg.layerComboBox_ignitionProbMap.layerChanged.connect( self.slot_trySelectRaster)
+        self.dlg.radioButton_ignitionPoints.clicked.connect(self.slot_radioButton_ignitionPoints_clicked)
+        self.dlg.radioButton_ignitionProbMap.clicked.connect( self.slot_radioButton_ignitionProbMap_clicked)
         ''' tab weather '''
         self.dlg.fileWidget_weatherFile.fileChanged.connect( self.slot_fileWidget_weatherFile_fileChanged)
         self.dlg.fileWidget_weatherFolder.fileChanged.connect( self.slot_fileWidget_weatherFolder_fileChanged)
@@ -430,6 +432,22 @@ class fire2amClass:
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
+
+    def slot_radioButton_ignitionProbMap_clicked(self):
+        """ When the raidioButton is selected, check if there's a layer Widget
+            else change to ignition random
+        """
+        if not self.dlg.layerComboBox_ignitionProbMap.currentLayer():
+            self.dlg.radioButton_ignitionRandom.setChecked(True)
+            log('Select a layer before selecting!',pre='No ProbabilityMap!',level=2, msgBar=self.dlg.msgBar, duration=1)
+
+    def slot_radioButton_ignitionPoints_clicked(self):
+        """ When the raidioButton is selected, check if there's a layer Widget
+            else change to ignition random
+        """
+        if not self.dlg.layerComboBox_ignitionPoints.currentLayer():
+            self.dlg.radioButton_ignitionRandom.setChecked(True)
+            log('Select a layer before selecting!',pre='No Ignition Layer!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
     def slot_radioButton_weatherFile_clicked(self):
         """ When the raidioButton is selected, check if there's a file on the fileWidget
