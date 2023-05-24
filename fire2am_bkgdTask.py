@@ -69,8 +69,8 @@ class after_ForestGrid(QgsTask):
         self.args = args
         self.dlg = dlg
         self.iface = iface
-        self.extent = extent 
-        self.crs = crs 
+        self.extent = extent
+        self.crs = crs
         self.plugin_dir = plugin_dir
         assert isinstance( self.extent , QgsRectangle)
         assert isinstance( self.crs , QgsCoordinateReferenceSystem)
@@ -155,16 +155,16 @@ class after_ForestGrid(QgsTask):
         ''' store for next stage '''
         self.filelist = filelist
         self.numbers = numbers
-        self.sim_num = sim_num 
-        self.final_grid_idx = final_grid_idx 
-        self.sim_totals = sim_totals 
+        self.sim_num = sim_num
+        self.final_grid_idx = final_grid_idx
+        self.sim_totals = sim_totals
         self.total = total
-        self.sim_idx = sim_idx 
-        self.sim_nu = sim_nu 
-        self.sim_fi = sim_fi 
+        self.sim_idx = sim_idx
+        self.sim_nu = sim_nu
+        self.sim_fi = sim_fi
         self.data = data
-        self.data_isZeros = data_isZeros 
-        self.sim_zeros = sim_zeros 
+        self.data_isZeros = data_isZeros
+        self.sim_zeros = sim_zeros
         first, second = numbers.T
         self.width1stNum, self.width2ndNum = len(str(np.max(first))), len(str(np.max(second)))
         #TODO note ascending datetime, inverts simulation num
@@ -259,7 +259,7 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
-    
+
 def after_ForestGrid_FireEvolution_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
     if exception is None:
@@ -282,14 +282,14 @@ class after_asciiDir(QgsTask):
         self.args = args
         self.dlg = dlg
         self.iface = iface
-        self.dirName = dirName 
+        self.dirName = dirName
         self.directory = Path( self.args['OutFolder'], self.dirName)
-        self.fileName = fileName 
+        self.fileName = fileName
         self.layerName = layerName
         self.sims_gpkg =  self.args['OutFolder'] / (layerName+'_sims.gpkg')
         self.stat_gpkg =  self.args['OutFolder'] / (layerName+'.gpkg')
-        self.extent = extent 
-        self.crs = crs 
+        self.extent = extent
+        self.crs = crs
         self.data = []
         self.simNum = 0
         self.filelist = []
@@ -324,7 +324,7 @@ class after_asciiDir(QgsTask):
         ''' store for next stage '''
         self.data = np.array(self.data)
         self.filelist = filelist
-        self.widthNum = widthNum 
+        self.widthNum = widthNum
         self.simNum = simNum
         self.nsim = nsim
         return True
@@ -396,16 +396,16 @@ def after_AsciiDir_sub_finished(exception, result):
     else:
         QgsMessageLog.logMessage('sub ? Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
-    
+
 def raster2vector_wTimestamp( layerName, rout_gpkg, vout_gpkg, extent, crs, dt):
     ''' from rout_gpkg to vout_gpkg geopackages '''
     rasterLayer = QgsRasterLayer('GPKG:'+str(rout_gpkg)+':'+layerName, layerName)
     tmp = processing.run('gdal:polygonize',
-               {'BAND' : 1, 
-                'EIGHT_CONNECTEDNESS' : False, 
-                'EXTRA' : '', 
-                'FIELD' : 'DN', 
-                'INPUT' : rasterLayer, 
+               {'BAND' : 1,
+                'EIGHT_CONNECTEDNESS' : False,
+                'EXTRA' : '',
+                'FIELD' : 'DN',
+                'INPUT' : rasterLayer,
                 'OUTPUT' : 'TEMPORARY_OUTPUT' })['OUTPUT']
     vectorLayer = QgsVectorLayer( tmp, layerName)
     options = QgsVectorFileWriter.SaveVectorOptions()
@@ -581,7 +581,7 @@ class after_betweenness_centrality(QgsTask):
             if self.isCanceled():
                 QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                 return False
-        
+
         QgsMessageLog.logMessage(self.description()+' calculating betweenness_centrality k=int(5*sqrt(|G|))',MESSAGE_CATEGORY, Qgis.Info)
         # outputs {nodes:betweenness_centrality_float_value}
         #checks for raise ValueError("Sample larger than population or is negative")
@@ -602,7 +602,7 @@ class after_betweenness_centrality(QgsTask):
             centrality_array[y,x]=v
         array2rasterFloat32( centrality_array, self.layer_name, self.gpkg, self.extent, self.crs, nodata = 0.0)
         QgsMessageLog.logMessage(self.description()+' foo ',MESSAGE_CATEGORY, Qgis.Info)
-        # TODO 
+        # TODO
         # fix self.data = np.array(self.data)
         # is it tuples inside ?
         QgsMessageLog.logMessage(self.description()+' bar ',MESSAGE_CATEGORY, Qgis.Info)
@@ -749,4 +749,3 @@ class nextHour:
         self.now -= timedelta(hours=1)
         return Timestamp(self.now).isoformat(timespec='seconds')
 '''
-
