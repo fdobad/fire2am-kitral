@@ -32,7 +32,19 @@
         setup layerComboxes filter
         regex match layerComboxes with current available layers
         check if weather file & folder exists in current project directory
-    connect_slots() : connect al ui buttons with their slot_callbacks
+    connect_slots() : connect all ui buttons with their slot_callbacks
+
+2.2 else listen to ui signals
+
+3. run_All : executes the simulation
+        dlg.updateState()
+        updateProject()
+        if not checkMap():
+            return
+        makeArgs()
+        stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
+        makeInstance()
+        externalProcess_start()
     
 
 
@@ -152,7 +164,6 @@ class fire2amClass:
         self.extent = None
         self.W = None
         self.H = None
-        self.geopackage = None
 
         # QProcess
         self.proc_dir = str(Path(self.plugin_dir,'C2FSB'))
@@ -773,8 +784,6 @@ class fire2amClass:
         if not self.checkMap():
             return
         self.makeArgs()
-        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
         self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
         self.makeInstance()
         self.externalProcess_start()
@@ -834,9 +843,6 @@ class fire2amClass:
         header, arg_str, gen_args, workdir = self.argdlg.get()
         self.args['OutFolder'] = Path(gen_args['OutFolder'])
         #TODO
-        #self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
-        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
         self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
 
         self.proc = QProcess()
