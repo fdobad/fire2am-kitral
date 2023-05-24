@@ -21,6 +21,22 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+1. fire2amClass __init__ : registers launch buttons on toolbar
+
+2. fire2amClass.run_Dialog : slot when dialog button is pressed
+
+2.1 if first_start_dialog
+    fire2amClassDialog() : build class
+    first_start_setup() :
+        setup layerComboxes filter
+        regex match layerComboxes with current available layers
+        check if weather file & folder exists in current project directory
+        default values f
+    connect_slots() : 
+    
+
+
 """
 import os.path
 import re
@@ -29,12 +45,12 @@ import sys
 from datetime import datetime, timedelta
 from functools import partial
 from glob import glob
-from multiprocessing import cpu_count
 from os import sep
 from pathlib import Path
 from platform import system as plt_sys
 from shlex import split as shlex_split
 from shutil import copy
+from copy import copy as shallow_copy
 
 import networkx as nx
 import numpy as np
@@ -328,9 +344,6 @@ class fire2amClass:
                 name = 'check_weather_folder_bkgd'
                 self.task[name] = check_weather_folder_bkgd( name, self.dlg, wfolder)
                 self.taskManager.addTask( self.task[name])
-        ''' default values '''
-        self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
-        self.dlg.spinBox_nthreads.setMaximum(cpu_count())
         ''' prepare stats table '''
         st = stats.describe([0,1])
         df = DataFrame( ('Name',*st._fields), index=('Name',*st._fields), columns=['Attributes'])
@@ -965,12 +978,17 @@ class fire2amClass:
         ''' this connects to the unnamed button on the run tab
             is mainly for live debugging stuff
             pressing the unnamed button next to kill, terminate, dev
+        '''
+        self.makeArgs()
         self.dlg.updateState()
         self.updateProject()
-        self.makeArgs()
-        '''
-        layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
-
+        self.checkMap()
+        header, arg_str, gen_args, workdir = self.argdlg.get()
+        self.args['OutFolder'] = Path(gen_args['OutFolder'])
+        ar = shlex_split( header + ' ' + arg_str )
+        sim = C2FSB(proc_dir=self.proc_dir, proc_exe=self.proc_exe, plainTextEdit=self.dlg.plainTextEdit)
+        sim.start(ar[0], ar[1:])
+        
 
 ExitStatus = {0:'CrashExit',
               1:'NormalExit'}
@@ -986,72 +1004,70 @@ ProcessError = {0:'Crashed',
                 4:'UnknownError',
                 5:'WriteError'}
 
-class QProcessQsgMsgLog(QProcess):
-    def __init__(self, parent=None, apath=None, plugin_dir=None):
+class C2FSB(QProcess):
+    def __init__(self, parent=None, proc_dir=None, proc_exe=None, plainTextEdit=None):
         super().__init__(parent)
-        self.finished.connect(self.on_finished)
-        self.setInputChannelMode(QProcess.ForwardedInputChannel)
+        self.setInputChannelMode( QProcess.ForwardedInputChannel)
         self.setProcessChannelMode( QProcess.SeparateChannels)
-        self.readyReadStandardOutput.connect(self.on_ready_read_standard_output)
-        self.readyReadStandardError.connect(self.on_ready_read_standard_error)
+        self.readyReadStandardOutput.connect(self.read_standard_output)
+        self.readyReadStandardError.connect(self.read_standard_error)
+        self.proc_dir = proc_dir
+        self.proc_exe = proc_exe
+        self.setWorkingDirectory( str(proc_dir))
+        self.plainTextEdit = plainTextEdit
         #self.proc.stateChanged.connect(self.externalProcess_handle_state)
         #self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
-        self.setWorkingDirectory( str(plugin_dir/'exiftool'))
-        self.apath = apath
-        self.plugin_dir = plugin_dir
-        self.display_stdout = True
-        self.fin = False
+        self.state = self.state()
+        self.end = None
 
-    def toggle_stderr(self, enable):
-        if enable:
-            self.readyReadStandardError.connect(self.on_ready_read_standard_error)
+    def append_message(self, msg):
+        self.plainTextEdit.appendPlainText(msg)
+
+    def start(self, gen_cmd, on_finished, proc_exe=None, proc_dir=None):
+        if (self.end is None) or (self.end is True):
+            pass
         else:
-            self.readyReadStandardError.disconnect()
+            qlog('end is false, probably running')
 
-    def start(self, command, apath):
-        super().start(command)
-        self.apath = apath
-        self.stdout_file = open( self.apath/'exiftool_output.csv', "wb")
-        QgsMessageLog.logMessage(f"QProcess started, state: {ProcessState[self.state()]}", MSGCAT, Qgis.Info)
-        #self.waitForStarted()
-        #self.write(b'\r')
-        #QgsMessageLog.logMessage(f" b\\r sent {ProcessState[self.state()]}", MSGCAT, Qgis.Info)
+        if proc_dir:
+            self.setWorkingDirectory( proc_dir)
+        if proc_exe:
+            self.proc_exe = proc_exe
+        self.finished.connect( on_finished)
+        super().start(self.proc_exe, gen_cmd)
+        self.fin = False
+        #ar = shlex_split( executable+' '+command, posix="win" not in plt_sys())
+        #super().start(ar[0], ar[1:])
 
     def terminate(self):
-        process_code = self.state()
-        if process_code != QProcess.ProcessState.NotRunning:
+        state = self.state()
+        if state != QProcess.ProcessState.NotRunning:
             QgsMessageLog.logMessage(f"QProcess terminating, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
             self.terminate()
         else:
             QgsMessageLog.logMessage(f"QProcess can't terminate, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
 
     def on_finished(self):
-        self.stdout_file.close()
         exit_code = self.exitCode()
+        self.exco = shallow_copy(exit_code)
+        self.end = True
         if exit_code==QProcess.ExitStatus.NormalExit:
-            QgsMessageLog.logMessage("QProcess finished with NormalExit status", MSGCAT, Qgis.Info)
-            QgsMessageLog.logMessage('Extracted metadata to exiftool_output.csv', MSGCAT , Qgis.Info)
-            #TODO check if import csv exists, compare nans length to files
-            proc_exiftool_output(self.apath)
-            QgsMessageLog.logMessage('Processed metadata to import_me.csv', MSGCAT, Qgis.Info)
-            layer_from_file( self.apath, self.plugin_dir)
-            QgsMessageLog.logMessage('Loaded layer', MSGCAT, Qgis.Info)
-            QgsMessageLog.logMessage('All Done', MSGCAT, Qgis.Success)
+            qlog('Normal Exit', Qgis.Success)
+            self.after()
         elif exit_code==QProcess.ExitStatus.CrashExit:
-            QgsMessageLog.logMessage(f"QProcess ProcessError {ProcessError[self.error()]}", MSGCAT, Qgis.Critical)
+            qlog('Crash Exit', Qgis.Critical)
         else:
-            QgsMessageLog.logMessage("QProcess finished with unknown ExitStatus!!", MSGCAT, Qgis.Critical)
-        self.fin = True
+            qlog('Unknown Exit', Qgis.Warning)
 
-    def on_ready_read_standard_output(self):
-        output = self.readAllStandardOutput()
-        self.stdout_file.write(output)
-        if self.display_stdout:
-            output = bytes(output).decode("utf8")
-            QgsMessageLog.logMessage(output, MSGCAT, Qgis.Info)
+    def read_standard_output(self):
+        data = self.proc.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        self.append_message('===std=OUT===\n'+stdout)
 
-    def on_ready_read_standard_error(self):
-        output = self.readAllStandardError()
-        output = bytes(output).decode("utf8")
-        QgsMessageLog.logMessage(output, MSGCAT, Qgis.Info)
+    def read_standard_error(self):
+        data = self.proc.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        self.append_message('===std=ERR===\n'+stderr)
 
+def qlog(msg, level=Qgis.Info):
+    QgsMessageLog.logMessage(str(args), MSGCAT, level)
