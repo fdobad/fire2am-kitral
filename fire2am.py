@@ -39,10 +39,8 @@
 3. run_All : executes the simulation
         dlg.updateState()
         updateProject()
-        if not checkMap():
-            return
+        checkMap():
         makeArgs()
-        stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
         makeInstance()
         externalProcess_start()
     
@@ -784,7 +782,6 @@ class fire2amClass:
         if not self.checkMap():
             return
         self.makeArgs()
-        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
         self.makeInstance()
         self.externalProcess_start()
 
@@ -842,8 +839,6 @@ class fire2amClass:
         self.checkMap()
         header, arg_str, gen_args, workdir = self.argdlg.get()
         self.args['OutFolder'] = Path(gen_args['OutFolder'])
-        #TODO
-        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
 
         self.proc = QProcess()
         self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
@@ -935,7 +930,7 @@ class fire2amClass:
         for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
             if do:
                 if Path(self.args['OutFolder'], dn).is_dir():
-                    self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
+                    self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, self.extent, self.crs)
                     self.taskManager.addTask( self.task[ln])
                 else:
                     log('folder not available', pre='No '+dn, level=3, msgBar=self.dlg.msgBar)
