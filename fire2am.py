@@ -32,7 +32,7 @@
         setup layerComboxes filter
         regex match layerComboxes with current available layers
         check if weather file & folder exists in current project directory
-    connect_slots() : 
+    connect_slots() : connect al ui buttons with their slot_callbacks
     
 
 
@@ -290,6 +290,45 @@ class fire2amClass:
         result = self.argdlg.exec_()
         log(f'argdlg closed with result {result}', level=0)
 
+    def showPlot(self, index):
+        log(f'Showing plot index {index}', level=0)
+        self.dlg.plt.show(index)
+
+    def run_Dialog(self):
+        """Run method that performs all the real work"""
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        if self.first_start_dialog == True:
+            self.first_start_dialog = False
+            self.dlg = fire2amClassDialog()
+            self.dlg.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
+            self.dlg.slot_windRandomize()
+            self.dlg.tabWidget.setCurrentIndex(0)
+            self.first_start_setup()
+            self.connect_slots()
+        # removed check if they are layers present
+        #if QgsProject.instance().mapLayers() == {}:
+        #    self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
+        #    log('Open a project with layers and restore defaults', pre='No layers found', level=3)
+        #    return
+        # removed check if project changed
+        #if self.project != QgsProject().instance():
+        #    old = self.project
+        #    self.project = QgsProject().instance()
+        #    log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
+        #                          self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
+        # if project not saved
+        if QgsProject().instance().absolutePath() == '':
+            self.iface.messageBar().pushMessage(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...', level=2, duration=2)
+            QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
+            return
+        # show the dialog
+        self.dlg.show()
+        # Run the dialog event loop
+        result = self.dlg.exec_()
+        # See if OK was pressed
+        log(f'dialog ran with result {result}',level=0)
+
     def first_start_setup(self):
         ''' layers default names '''
         # layer only accept these types (not working in QtDesigner)
@@ -377,46 +416,6 @@ class fire2amClass:
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
-
-    def showPlot(self, index):
-        log(f'Showing plot index {index}', level=0)
-        self.dlg.plt.show(index)
-
-    def run_Dialog(self):
-        """Run method that performs all the real work"""
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start_dialog == True:
-            self.first_start_dialog = False
-            self.dlg = fire2amClassDialog()
-            self.dlg.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
-            self.dlg.slot_windRandomize()
-            self.dlg.tabWidget.setCurrentIndex(0)
-            self.first_start_setup()
-            self.connect_slots()
-        # removed check if they are layers present
-        #if QgsProject.instance().mapLayers() == {}:
-        #    self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
-        #    log('Open a project with layers and restore defaults', pre='No layers found', level=3)
-        #    return
-        # removed check if project changed
-        #if self.project != QgsProject().instance():
-        #    old = self.project
-        #    self.project = QgsProject().instance()
-        #    log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
-        #                          self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
-        # if project not saved
-        if QgsProject().instance().absolutePath() == '':
-            self.iface.messageBar().pushMessage(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...', level=2, duration=2)
-            QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
-            return
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        log(f'dialog ran with result {result}',level=0)
-
 
     def makeInstance(self):
         ''' write instance (exiting in each point if something fails)
