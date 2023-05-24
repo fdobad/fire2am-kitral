@@ -90,8 +90,8 @@ class after_ForestGrid(QgsTask):
         self.width2ndNum = 0
         self.directory = args['OutFolder'] / 'Grids'
         self.out_gpkg = args['OutFolder'] / (layerName+'.gpkg')
-        self.rout_gpkg = args['OutFolder'] / ('r'+layerName+'.gpkg')
-        self.vout_gpkg = args['OutFolder'] / ('v'+layerName+'.gpkg')
+        self.rout_gpkg = args['OutFolder'] / (layerName+'_sim.gpkg')
+        self.vout_gpkg = args['OutFolder'] / (layerName+'_sim_polygon.gpkg')
         self.evout_gpkg = args['OutFolder'] / (layerName+'Evolution.gpkg')
         #TODO: all datetimes start same day
         #self.now = datetime.now()
@@ -188,6 +188,11 @@ class after_ForestGrid(QgsTask):
                     mergedName = 'FireEvolution_'+str(s).zfill(self.width1stNum)
                     self.subTask[mergedName] = QgsTask.fromFunction(self.description()+' FireEvolution simulation %s'%s, self.sub_FireEvolution, s, tg, ii, nu, dt, mergedName, on_finished=after_ForestGrid_FireEvolution_finished)
                     QgsApplication.taskManager().addTask( self.subTask[mergedName])
+                elif tg==1:
+                    name = 'FireSim_'+str(s).zfill(self.width1stNum)
+                    self.subTask[name] = QgsTask.fromFunction(self.description()+' simulation %s store'%s, self.sub_StoreFireSim, s, tg, ii, nu, on_finished=after_ForestGrid_StoreFireSim_finished)
+                    #TODO move after the for loop, concatenate
+                    QgsApplication.taskManager().addTask( self.subTask[name])
 
         else:
             if self.exception is None:
@@ -212,6 +217,22 @@ class after_ForestGrid(QgsTask):
         df = DataFrame( (layerName,*st), index=('Name',*st._fields), columns=[layerName])
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
         return {'result':True, 'description':task.description(), 'df':df, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':layerName }
+
+    def sub_StoreFireSim(self, task, s, tg, ii, nu):
+        QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
+        #QgsMessageLog.logMessage(task.description()+f' started {s} {tg} {ii} {nu} {dt}', MESSAGE_CATEGORY, Qgis.Info)
+        # TODO task.setProgress(s/self.total*50+50)
+        task.setProgress(50)
+        #TODO on next line:datetime inverted with dt[::-1]
+        for i,(nsim,ngrid) in zip(ii,nu):
+            if not self.data_isZeros[i]:
+                layerName = self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum)
+                #QgsMessageLog.logMessage(task.description()+f' layerName {layerName}', MESSAGE_CATEGORY, Qgis.Info)
+                array2rasterInt16( self.data[i], layerName, self.rout_gpkg, self.extent, self.crs, nodata = 0)
+                if task.isCanceled():
+                    QgsMessageLog.logMessage(task.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                    return {'result':False}
+        return {'result':True, 'description':task.description()}
 
     def sub_FireEvolution(self, task, s, tg, ii, nu, dt, mergedName):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -257,6 +278,18 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
             QgsMessageLog.logMessage(result['description']+f' done ui update {type(result["dlg"])} {type(result["iface"])}', MESSAGE_CATEGORY, Qgis.Info)
     else:
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
+        raise exception
+    QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
+
+def after_ForestGrid_StoreFireSim_finished(exception, result):
+    QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
+    if exception is None:
+        if result is None:
+            QgsMessageLog.logMessage(result['description']+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
+        else:
+            QgsMessageLog.logMessage(result['description']+' Finished w/result %s'%result['result'], MESSAGE_CATEGORY, Qgis.Info)
+    else:
+        QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
 
