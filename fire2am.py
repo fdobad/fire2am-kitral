@@ -22,6 +22,9 @@
  *                                                                         *
  ***************************************************************************/
 
+TODO:
+    run_All with empty weather folder stop!
+
 1. fire2amClass __init__ : registers launch buttons on toolbar
 
 2. fire2amClass.run_Dialog : slot when dialog button is pressed
@@ -37,9 +40,12 @@
 2.2 else listen to ui signals
 
 3. run_All : executes the simulation
-        dlg.updateState()
-        updateProject()
-        checkMap():
+        dlg.updateState() : get all ui parameters updated
+        updateProject() :
+            get global params (fuel layer W,H,extent,crs)
+            self.project : TODO discard  ? be able to run without a project saved
+            get datetime.now() TODO discard? 
+        checkMap()
         makeArgs()
         makeInstance()
         externalProcess_start()
@@ -310,7 +316,6 @@ class fire2amClass:
         if self.first_start_dialog == True:
             self.first_start_dialog = False
             self.dlg = fire2amClassDialog()
-            self.dlg.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
             self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
@@ -415,7 +420,7 @@ class fire2amClass:
         ''' tab weather '''
         self.dlg.fileWidget_weatherFile.fileChanged.connect( self.slot_fileWidget_weatherFile_fileChanged)
         self.dlg.fileWidget_weatherFolder.fileChanged.connect( self.slot_fileWidget_weatherFolder_fileChanged)
-        #self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
+        self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
@@ -425,6 +430,14 @@ class fire2amClass:
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
+
+    def slot_radioButton_weatherFile_clicked(self):
+        """ When the raidioButton is selected, check if there's a file on the fileWidget
+            else change to weatherConstant
+        """
+        if not Path(self.dlg.fileWidget_weatherFile.filePath()).is_file():
+            self.dlg.radioButton_weatherConstant.setChecked(True)
+            log('Select a file first before selecting!',pre='No Weather File!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
     def makeInstance(self):
         ''' write instance (exiting in each point if something fails)
@@ -604,12 +617,14 @@ class fire2amClass:
                 self.dlg.state['radioButton_weatherFile'] = True
                 self.dlg.state['fileWidget_weatherFile'] = str(afile)
                 log('looks ok!', pre='Weather.csv', level=1, msgBar=self.dlg.msgBar)
+                return
             else:
                 log(f'file {afile.parent} format problem', pre='Weather.csv', level=3, msgBar=self.dlg.msgBar)
         except Exception as e:
             log(e, pre=f'Single Weather.csv file {afile} exception {e}', level=2, msgBar=self.dlg.msgBar)
         self.dlg.fileWidget_weatherFile.blockSignals(True)
-        self.dlg.fileWidget_weatherFile.setFilePath( self.project.absolutePath())
+        if QgsProject().instance().absolutePath() !='':
+            self.dlg.fileWidget_weatherFile.setFilePath( QgsProject().instance().absolutePath())
         self.dlg.radioButton_weatherConstant.setChecked(True)
         self.dlg.fileWidget_weatherFile.blockSignals(False)
 

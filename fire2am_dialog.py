@@ -33,8 +33,9 @@ from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
+from qgis.core import Qgis
 
-from .fire2am_utils import MatplotlibFigures, PandasModel
+from .fire2am_utils import MatplotlibFigures, PandasModel, aName
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -136,6 +137,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
     def init_default_values(self):
         self.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.spinBox_nthreads.setMaximum(cpu_count())
+        self.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
 
     def slot_windRandomize(self):
         WD = np.random.randint(0,359)
