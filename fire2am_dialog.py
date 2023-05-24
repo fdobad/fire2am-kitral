@@ -28,6 +28,7 @@ import io
 import os
 from multiprocessing import cpu_count
 
+import numpy as np
 from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
@@ -75,6 +76,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.statdf = None
         self.layerComboBoxes = { o.objectName():o for o in self.findChildren( QgsMapLayerComboBox, options= Qt.FindChildrenRecursively) }
         self.init_default_values()
+        self.pushButton_windRandomize.pressed.connect( self.slot_windRandomize)
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 
@@ -134,6 +136,12 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
     def init_default_values(self):
         self.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.spinBox_nthreads.setMaximum(cpu_count())
+
+    def slot_windRandomize(self):
+        WD = np.random.randint(0,359)
+        WS = np.random.randint(1,100)
+        self.spinBox_windDirection.setValue(WD)
+        self.spinBox_windSpeed.setValue(WS)
 
     ''' TBD if user pastes tabular data into table
     def pasteSelection(self):

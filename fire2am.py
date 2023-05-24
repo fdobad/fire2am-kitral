@@ -32,7 +32,6 @@
         setup layerComboxes filter
         regex match layerComboxes with current available layers
         check if weather file & folder exists in current project directory
-        default values f
     connect_slots() : 
     
 
@@ -368,7 +367,6 @@ class fire2amClass:
         ''' tab weather '''
         self.dlg.fileWidget_weatherFile.fileChanged.connect( self.slot_fileWidget_weatherFile_fileChanged)
         self.dlg.fileWidget_weatherFolder.fileChanged.connect( self.slot_fileWidget_weatherFolder_fileChanged)
-        self.dlg.pushButton_windRandomize.pressed.connect( self.slot_windRandomize)
         #self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
         #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
@@ -379,12 +377,6 @@ class fire2amClass:
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
-
-    def slot_windRandomize(self):
-        WD = np.random.randint(0,359)
-        WS = np.random.randint(1,100)
-        self.dlg.spinBox_windDirection.setValue(WD)
-        self.dlg.spinBox_windSpeed.setValue(WS)
 
     def showPlot(self, index):
         log(f'Showing plot index {index}', level=0)
@@ -398,7 +390,7 @@ class fire2amClass:
             self.first_start_dialog = False
             self.dlg = fire2amClassDialog()
             self.dlg.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
-            self.slot_windRandomize()
+            self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.connect_slots()
