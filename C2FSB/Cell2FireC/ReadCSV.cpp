@@ -25,21 +25,46 @@ CSVReader::CSVReader(std::string filename, std::string delm){
 * Parses through csv file line by line and returns the data
 * in vector of vector of strings.
 */
-std::vector<std::vector<std::string>> CSVReader::getData(){
+std::vector<std::vector<std::string>> CSVReader::getData() {
 	std::ifstream file(this->fileName);
 	std::vector<std::vector<std::string> > dataList;
 	std::string line = "";
-	
 	// Iterate through each line and split the content using delimeter
-	while (getline(file, line))
-	{
-		std::vector<std::string> vec;
-		boost::algorithm::split(vec, line, boost::is_any_of(this->delimeter));
-		dataList.push_back(vec);
+	if (this->fileName.substr(this->fileName.find_last_of(".") + 1) == "asc") {
+		int header = 0;
+		while (getline(file, line)) {
+			if (header < 5) {
+				std::vector<std::string> vec;
+				int start = 0;
+				int end = 0;
+				while ((start = line.find_first_not_of(this->delimeter, end)) != std::string::npos) {
+					end = line.find(this->delimeter, start);
+					vec.push_back(line.substr(start, end - start));
+				}
+				dataList.push_back(vec);
+				header++;
+			}
+			else {
+				std::vector<std::string> vec;
+				boost::algorithm::split(vec, line, boost::is_any_of(this->delimeter));
+				dataList.push_back(vec);
+			}
+
+		}
 	}
+
+	else {
+		while (getline(file, line)) {
+			std::vector<std::string> vec;
+			boost::algorithm::split(vec, line, boost::is_any_of(this->delimeter));
+			dataList.push_back(vec);
+		}
+	}
+
+
 	// Close the File
 	file.close();
- 
+
 	return dataList;
 }
 
@@ -322,7 +347,6 @@ void CSVReader::parseForestDF(forestDF * frt_ptr, std::vector<std::vector<std::s
 	std::string::size_type sz;   // alias of size_t
 	std::unordered_map<std::string, int> Aux;
 	std::vector<int> Aux2;
-
 	cols = std::stoi(DF[0][1], &sz);
 	rows = std::stoi(DF[1][1], &sz);
 
