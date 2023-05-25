@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>7</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -111,6 +111,9 @@
        </item>
        <item row="5" column="1">
         <widget class="QgsMapLayerComboBox" name="layerComboBox_pv">
+         <property name="toolTip">
+          <string>Empty defaults to 1s if enabling downsteam protection value statistic</string>
+         </property>
          <property name="allowEmptyLayer">
           <bool>true</bool>
          </property>
@@ -121,6 +124,9 @@
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="label_18">
+         <property name="toolTip">
+          <string>Empty defaults to 1s if enabling downsteam protection value statistic</string>
+         </property>
          <property name="text">
           <string>pv: Protection Value</string>
          </property>
@@ -472,7 +478,7 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
        <item row="4" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>~Gusts~
+          <string>Emulate Wind Gusts.
 Coeficient of variation
 for (normal distribution)
  Rate of Fire Spread</string>
@@ -880,7 +886,7 @@ or imposible configurations</string>
        <item row="0" column="1">
         <widget class="QLabel" name="label_17">
          <property name="text">
-          <string>version 0.7
+          <string>version 0.9.1
  Documentation at: fdobad.github.io/doctest
 Subscribe to the repo to get notified of new releases
 Ask the fire2a team for access to the repo</string>

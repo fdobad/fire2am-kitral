@@ -69,8 +69,8 @@ class after_ForestGrid(QgsTask):
         self.args = args
         self.dlg = dlg
         self.iface = iface
-        self.extent = extent 
-        self.crs = crs 
+        self.extent = extent
+        self.crs = crs
         self.plugin_dir = plugin_dir
         assert isinstance( self.extent , QgsRectangle)
         assert isinstance( self.crs , QgsCoordinateReferenceSystem)
@@ -90,8 +90,8 @@ class after_ForestGrid(QgsTask):
         self.width2ndNum = 0
         self.directory = args['OutFolder'] / 'Grids'
         self.out_gpkg = args['OutFolder'] / (layerName+'.gpkg')
-        self.rout_gpkg = args['OutFolder'] / ('r'+layerName+'.gpkg')
-        self.vout_gpkg = args['OutFolder'] / ('v'+layerName+'.gpkg')
+        self.rout_gpkg = args['OutFolder'] / (layerName+'_sim.gpkg')
+        self.vout_gpkg = args['OutFolder'] / (layerName+'_sim_polygon.gpkg')
         self.evout_gpkg = args['OutFolder'] / (layerName+'Evolution.gpkg')
         #TODO: all datetimes start same day
         #self.now = datetime.now()
@@ -155,16 +155,16 @@ class after_ForestGrid(QgsTask):
         ''' store for next stage '''
         self.filelist = filelist
         self.numbers = numbers
-        self.sim_num = sim_num 
-        self.final_grid_idx = final_grid_idx 
-        self.sim_totals = sim_totals 
+        self.sim_num = sim_num
+        self.final_grid_idx = final_grid_idx
+        self.sim_totals = sim_totals
         self.total = total
-        self.sim_idx = sim_idx 
-        self.sim_nu = sim_nu 
-        self.sim_fi = sim_fi 
+        self.sim_idx = sim_idx
+        self.sim_nu = sim_nu
+        self.sim_fi = sim_fi
         self.data = data
-        self.data_isZeros = data_isZeros 
-        self.sim_zeros = sim_zeros 
+        self.data_isZeros = data_isZeros
+        self.sim_zeros = sim_zeros
         first, second = numbers.T
         self.width1stNum, self.width2ndNum = len(str(np.max(first))), len(str(np.max(second)))
         #TODO note ascending datetime, inverts simulation num
@@ -188,6 +188,11 @@ class after_ForestGrid(QgsTask):
                     mergedName = 'FireEvolution_'+str(s).zfill(self.width1stNum)
                     self.subTask[mergedName] = QgsTask.fromFunction(self.description()+' FireEvolution simulation %s'%s, self.sub_FireEvolution, s, tg, ii, nu, dt, mergedName, on_finished=after_ForestGrid_FireEvolution_finished)
                     QgsApplication.taskManager().addTask( self.subTask[mergedName])
+                elif tg==1:
+                    name = 'FireSim_'+str(s).zfill(self.width1stNum)
+                    self.subTask[name] = QgsTask.fromFunction(self.description()+' simulation %s store'%s, self.sub_StoreFireSim, s, tg, ii, nu, on_finished=after_ForestGrid_StoreFireSim_finished)
+                    #TODO move after the for loop, concatenate
+                    QgsApplication.taskManager().addTask( self.subTask[name])
 
         else:
             if self.exception is None:
@@ -212,6 +217,22 @@ class after_ForestGrid(QgsTask):
         df = DataFrame( (layerName,*st), index=('Name',*st._fields), columns=[layerName])
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
         return {'result':True, 'description':task.description(), 'df':df, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':layerName }
+
+    def sub_StoreFireSim(self, task, s, tg, ii, nu):
+        QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
+        #QgsMessageLog.logMessage(task.description()+f' started {s} {tg} {ii} {nu} {dt}', MESSAGE_CATEGORY, Qgis.Info)
+        # TODO task.setProgress(s/self.total*50+50)
+        task.setProgress(50)
+        #TODO on next line:datetime inverted with dt[::-1]
+        for i,(nsim,ngrid) in zip(ii,nu):
+            if not self.data_isZeros[i]:
+                layerName = self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum)
+                #QgsMessageLog.logMessage(task.description()+f' layerName {layerName}', MESSAGE_CATEGORY, Qgis.Info)
+                array2rasterInt16( self.data[i], layerName, self.rout_gpkg, self.extent, self.crs, nodata = 0)
+                if task.isCanceled():
+                    QgsMessageLog.logMessage(task.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
+                    return {'result':False}
+        return {'result':True, 'description':task.description()}
 
     def sub_FireEvolution(self, task, s, tg, ii, nu, dt, mergedName):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -259,7 +280,19 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
-    
+
+def after_ForestGrid_StoreFireSim_finished(exception, result):
+    QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
+    if exception is None:
+        if result is None:
+            QgsMessageLog.logMessage(result['description']+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
+        else:
+            QgsMessageLog.logMessage(result['description']+' Finished w/result %s'%result['result'], MESSAGE_CATEGORY, Qgis.Info)
+    else:
+        QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
+        raise exception
+    QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
+
 def after_ForestGrid_FireEvolution_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
     if exception is None:
@@ -276,20 +309,20 @@ def after_ForestGrid_FireEvolution_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
 
 class after_asciiDir(QgsTask):
-    def __init__(self, description, iface, dlg, args, dirName, fileName, layerName, out_gpkg, stats_gpkg, extent, crs):
+    def __init__(self, description, iface, dlg, args, dirName, fileName, layerName, extent, crs):
         super().__init__(description, QgsTask.CanCancel)
         self.exception = None
         self.args = args
         self.dlg = dlg
         self.iface = iface
-        self.dirName = dirName 
+        self.dirName = dirName
         self.directory = Path( self.args['OutFolder'], self.dirName)
-        self.fileName = fileName 
+        self.fileName = fileName
         self.layerName = layerName
-        self.out_gpkg = out_gpkg
-        self.stats_gpkg = stats_gpkg
-        self.extent = extent 
-        self.crs = crs 
+        self.sims_gpkg =  self.args['OutFolder'] / (layerName+'_sims.gpkg')
+        self.stat_gpkg =  self.args['OutFolder'] / (layerName+'.gpkg')
+        self.extent = extent
+        self.crs = crs
         self.data = []
         self.simNum = 0
         self.filelist = []
@@ -324,7 +357,7 @@ class after_asciiDir(QgsTask):
         ''' store for next stage '''
         self.data = np.array(self.data)
         self.filelist = filelist
-        self.widthNum = widthNum 
+        self.widthNum = widthNum
         self.simNum = simNum
         self.nsim = nsim
         return True
@@ -340,9 +373,9 @@ class after_asciiDir(QgsTask):
                 meanData  = self.data
             '''
             meanData = np.mean( self.data, axis=0, dtype=np.float32)
-            array2rasterFloat32( meanData, self.layerName, self.stats_gpkg, self.extent, self.crs, nodata = 0.0)
+            array2rasterFloat32( meanData, self.layerName, self.stat_gpkg, self.extent, self.crs, nodata = 0.0)
             ''' show layer '''
-            layer = self.iface.addRasterLayer('GPKG:'+str(self.stats_gpkg)+':'+self.layerName, self.layerName)
+            layer = self.iface.addRasterLayer('GPKG:'+str(self.stat_gpkg)+':'+self.layerName, self.layerName)
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
@@ -379,7 +412,7 @@ class after_asciiDir(QgsTask):
         # write all rasters to gpkg
         task.setProgress(50)
         for i,(s,afile) in enumerate(zip(self.simNum,self.filelist)):
-            array2rasterFloat32( self.data[i], self.layerName+str(s).zfill(self.widthNum), self.out_gpkg, self.extent, self.crs, nodata = 0.0)
+            array2rasterFloat32( self.data[i], self.layerName+str(s).zfill(self.widthNum), self.sims_gpkg, self.extent, self.crs, nodata = 0.0)
             task.setProgress(s/self.nsim*50+50)
             if task.isCanceled():
                 QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
@@ -396,16 +429,16 @@ def after_AsciiDir_sub_finished(exception, result):
     else:
         QgsMessageLog.logMessage('sub ? Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
-    
+
 def raster2vector_wTimestamp( layerName, rout_gpkg, vout_gpkg, extent, crs, dt):
     ''' from rout_gpkg to vout_gpkg geopackages '''
     rasterLayer = QgsRasterLayer('GPKG:'+str(rout_gpkg)+':'+layerName, layerName)
     tmp = processing.run('gdal:polygonize',
-               {'BAND' : 1, 
-                'EIGHT_CONNECTEDNESS' : False, 
-                'EXTRA' : '', 
-                'FIELD' : 'DN', 
-                'INPUT' : rasterLayer, 
+               {'BAND' : 1,
+                'EIGHT_CONNECTEDNESS' : False,
+                'EXTRA' : '',
+                'FIELD' : 'DN',
+                'INPUT' : rasterLayer,
                 'OUTPUT' : 'TEMPORARY_OUTPUT' })['OUTPUT']
     vectorLayer = QgsVectorLayer( tmp, layerName)
     options = QgsVectorFileWriter.SaveVectorOptions()
@@ -581,7 +614,7 @@ class after_betweenness_centrality(QgsTask):
             if self.isCanceled():
                 QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                 return False
-        
+
         QgsMessageLog.logMessage(self.description()+' calculating betweenness_centrality k=int(5*sqrt(|G|))',MESSAGE_CATEGORY, Qgis.Info)
         # outputs {nodes:betweenness_centrality_float_value}
         #checks for raise ValueError("Sample larger than population or is negative")
@@ -602,7 +635,7 @@ class after_betweenness_centrality(QgsTask):
             centrality_array[y,x]=v
         array2rasterFloat32( centrality_array, self.layer_name, self.gpkg, self.extent, self.crs, nodata = 0.0)
         QgsMessageLog.logMessage(self.description()+' foo ',MESSAGE_CATEGORY, Qgis.Info)
-        # TODO 
+        # TODO
         # fix self.data = np.array(self.data)
         # is it tuples inside ?
         QgsMessageLog.logMessage(self.description()+' bar ',MESSAGE_CATEGORY, Qgis.Info)
@@ -749,4 +782,3 @@ class nextHour:
         self.now -= timedelta(hours=1)
         return Timestamp(self.now).isoformat(timespec='seconds')
 '''
-

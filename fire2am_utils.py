@@ -194,7 +194,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %
 #logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 from qgis.core import Qgis, QgsMessageLog
-def log(*args, pre='', level=1, plugin=aName, msgBar=None):
+def log(*args, pre='', level=1, plugin=aName, msgBar=None, duration=None):
     '''
     log(*args, level=1)
 
@@ -220,29 +220,44 @@ def log(*args, pre='', level=1, plugin=aName, msgBar=None):
 
     if level == 0:
         logging.debug( plugin+pre+args)
-        QgsMessageLog.logMessage( 'debug '+pre+args, plugin, level=Qgis.Info) 
+        QgsMessageLog.logMessage( 'DEBUG '+pre+args, plugin, level=Qgis.Info) 
         if msgBar:
-            msgBar.pushMessage( pre+'debug', args, level=Qgis.Info, duration=1)
+            if duration:
+                msgBar.pushMessage( pre+' DEBUG ', args, level=Qgis.Info, duration=duration)
+            else:
+                msgBar.pushMessage( pre+' DEBUG ', args, level=Qgis.Info)
     elif level == 1:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Info) 
         logging.info( plugin+pre+args)
         if msgBar:
-            msgBar.pushMessage( pre, args, level=Qgis.Info)
+            if duration:
+                msgBar.pushMessage( pre, args, level=Qgis.Info, duration=duration)
+            else:
+                msgBar.pushMessage( pre, args, level=Qgis.Info)
     elif level == 2:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Warning) 
         logging.warning( plugin+pre+args)
         if msgBar:
-            msgBar.pushMessage( pre, args, level=Qgis.Warning)
+            if duration:
+                msgBar.pushMessage( pre, args, level=Qgis.Warning, duration=duration)
+            else:
+                msgBar.pushMessage( pre, args, level=Qgis.Warning)
     elif level == 3:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Critical) 
         logging.critical( plugin+pre+args)
         if msgBar:
-            msgBar.pushMessage( pre, args, level=Qgis.Critical)
+            if duration:
+                msgBar.pushMessage( pre, args, level=Qgis.Critical, duration=duration)
+            else:
+                msgBar.pushMessage( pre, args, level=Qgis.Critical)
     elif level == 4:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Success) 
         logging.info( plugin+'success '+pre+args)
         if msgBar:
-            msgBar.pushMessage( pre, args, level=Qgis.Success)
+            if duration:
+                msgBar.pushMessage( pre, args, level=Qgis.Success, duration=duration)
+            else:
+                msgBar.pushMessage( pre, args, level=Qgis.Success)
 
 def randomNames(n=8, l=4):
     ''' n words, l word length

@@ -23,15 +23,19 @@
  *                                                                         *
  ***************************************************************************/
 '''
-from qgis.gui import QgsMessageBar, QgsMapLayerComboBox, QgsFileWidget
-from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets
+import csv
+import io
+import os
+from multiprocessing import cpu_count
+
+import numpy as np
+from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
+from qgis.core import Qgis
 
-import os,csv, io
-from .fire2am_utils import PandasModel, MatplotlibFigures
-
+from .fire2am_utils import MatplotlibFigures, PandasModel, aName
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -71,6 +75,9 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.updateState()
         self.args = {}
         self.statdf = None
+        self.layerComboBoxes = { o.objectName():o for o in self.findChildren( QgsMapLayerComboBox, options= Qt.FindChildrenRecursively) }
+        self.init_default_values()
+        self.pushButton_windRandomize.pressed.connect( self.slot_windRandomize)
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 
@@ -126,6 +133,17 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
             csv.writer(stream, delimiter='\t').writerows(table)
             QtWidgets.qApp.clipboard().setText(stream.getvalue())
         return
+
+    def init_default_values(self):
+        self.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
+        self.spinBox_nthreads.setMaximum(cpu_count())
+        self.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
+
+    def slot_windRandomize(self):
+        WD = np.random.randint(0,359)
+        WS = np.random.randint(1,100)
+        self.spinBox_windDirection.setValue(WD)
+        self.spinBox_windSpeed.setValue(WS)
 
     ''' TBD if user pastes tabular data into table
     def pasteSelection(self):

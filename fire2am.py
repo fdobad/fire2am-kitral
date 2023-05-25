@@ -21,54 +21,91 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+TODO:
+    run_All with empty weather folder stop!
+
+1. fire2amClass __init__ : registers launch buttons on toolbar
+
+2. fire2amClass.run_Dialog : slot when dialog button is pressed
+
+2.1 if first_start_dialog
+    fire2amClassDialog() : build class
+    first_start_setup() :
+        setup layerComboxes filter
+        regex match layerComboxes with current available layers
+        check if weather file & folder exists in current project directory
+    connect_slots() : connect all ui buttons with their slot_callbacks
+
+2.2 else listen to ui signals
+
+3. run_All : executes the simulation
+        dlg.updateState() : get all ui parameters updated
+        updateProject() :
+            get global params (fuel layer W,H,extent,crs)
+            self.project : TODO discard  ? be able to run without a project saved
+            get datetime.now() TODO discard? 
+        checkMap()
+        makeArgs()
+        makeInstance()
+        externalProcess_start()
+    
+
+
 """
 import os.path
 import re
+import stat
 import sys
 from datetime import datetime, timedelta
 from functools import partial
 from glob import glob
-from multiprocessing import cpu_count
 from os import sep
 from pathlib import Path
+from platform import system as plt_sys
 from shlex import split as shlex_split
 from shutil import copy
-import networkx as nx
+from copy import copy as shallow_copy
 
-from scipy import stats
+import networkx as nx
 import numpy as np
 import processing
-
 from pandas import DataFrame, Series, Timestamp, concat, read_csv
 # pylint: disable=no-name-in-module
 from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
-                       QgsFeature, QgsField, QgsGeometry, QgsMapLayerType,
-                       QgsMessageLog, QgsPointXY, QgsProject,
-                       QgsRasterBandStats, QgsRasterLayer,
-                       QgsTask, QgsVectorFileWriter, QgsVectorLayer,
-                       QgsWkbTypes)
+                       QgsFeature, QgsField, QgsGeometry,
+                       QgsMapLayerProxyModel, QgsMapLayerType, QgsMessageLog,
+                       QgsPointXY, QgsProject, QgsRasterBandStats,
+                       QgsRasterLayer, QgsTask, QgsVectorFileWriter,
+                       QgsVectorLayer, QgsWkbTypes)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings,
-                              QTranslator, QVariant)
+                              QTranslator, QVariant, QTimer)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
-# pylint: enable=no-name-in-module
+from scipy import stats
 
+from . import fire2a_checks
 from .fire2am_argparse import fire2amClassDialogArgparse
-from .fire2am_bkgdTask import (after_ForestGrid, after_asciiDir, afterTask_logFile, after_betweenness_centrality, after_downstream_protection_value, check_weather_folder_bkgd)
+from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
+                               after_downstream_protection_value,
+                               after_ForestGrid, afterTask_logFile,
+                               check_weather_folder_bkgd)
 # Import the code for the dialog
 from .fire2am_dialog import fire2amClassDialog
-from .fire2am_utils import check as fdoCheck
 from .fire2am_utils import aName, get_params, log #, randomDataFrame
-from . import fire2a_checks
+from .fire2am_utils import check as fdoCheck
 # Initialize Qt resources from file resources.py
-from .img.resources import * # pylint: disable=wildcard-import, unused-wildcard-import
+from .img.resources import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
-from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
-                         check_gdal_driver_name, matchPoints2Raster,
-                         matchRasterCellIds2points, mergeVectorLayers,
-                         rasterRenderInterpolatedPseudoColor, writeVectorLayer, 
-                         checkLayerPoints)
+from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
+                         check_gdal_driver_name, checkLayerPoints, id2xy,
+                         matchPoints2Raster, matchRasterCellIds2points,
+                         mergeVectorLayers,
+                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
+
+# pylint: enable=no-name-in-module
+
 
 # For debugging
 #import pdb
@@ -112,6 +149,8 @@ class fire2amClass:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Fire Simulator Analytics Management')
+        if plt_sys()!='Windows':
+            os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -127,7 +166,8 @@ class fire2amClass:
         self.project = None
         self.crs = None
         self.extent = None
-        self.geopackage = None
+        self.W = None
+        self.H = None
 
         # QProcess
         self.proc_dir = str(Path(self.plugin_dir,'C2FSB'))
@@ -137,18 +177,15 @@ class fire2amClass:
                             QProcess.ProcessState.Starting: 'Starting',
                             QProcess.ProcessState.Running: 'Running' }
         # QgsTask
-        self.task = {} 
+        self.task = {}
         self.taskManager = QgsApplication.taskManager()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
-
         We implement this ourselves since we do not inherit QObject.
-
         :param message: String for translation.
         :type message: str, QString
-
         :returns: Translated version of message.
         :rtype: QString
         """
@@ -260,27 +297,71 @@ class fire2amClass:
             self.iface.removeToolBarIcon(action)
 
     def run_Argparse(self):
-        """Run method that performs all the real work"""
+        """ Argparse dialog run method that performs all the real work"""
         if self.first_start_argparse == True:
             self.first_start_argparse = False
             self.argdlg = fire2amClassDialogArgparse()
-        # show the dialog
         self.argdlg.show()
-        # Run the dialog event loop
         result = self.argdlg.exec_()
-        print('argdlg result',result)
+        log(f'argdlg closed with result {result}', level=0)
+
+    def showPlot(self, index):
+        log(f'Showing plot index {index}', level=0)
+        self.dlg.plt.show(index)
+
+    def run_Dialog(self):
+        """Run method that performs all the real work"""
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        if self.first_start_dialog == True:
+            self.first_start_dialog = False
+            self.dlg = fire2amClassDialog()
+            self.dlg.slot_windRandomize()
+            self.dlg.tabWidget.setCurrentIndex(0)
+            self.first_start_setup()
+            self.connect_slots()
+        # removed check if they are layers present
+        #if QgsProject.instance().mapLayers() == {}:
+        #    self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
+        #    log('Open a project with layers and restore defaults', pre='No layers found', level=3)
+        #    return
+        # removed check if project changed
+        #if self.project != QgsProject().instance():
+        #    old = self.project
+        #    self.project = QgsProject().instance()
+        #    log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
+        #                          self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
+        # if project not saved
+        if QgsProject().instance().absolutePath() == '':
+            self.iface.messageBar().pushMessage(f'{aName}:','Save the project in the same folder as the rasters. Raising the save dialog...', level=2, duration=2)
+            QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
+            return
+        # show the dialog
+        self.dlg.show()
+        # Run the dialog event loop
+        result = self.dlg.exec_()
         # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        log(f'dialog ran with result {result}',level=0)
 
     def first_start_setup(self):
         ''' layers default names '''
+        # layer only accept these types (not working in QtDesigner)
+        self.dlg.layerComboBox_fuels.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_elevation.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_cbd.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_cbh.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ccf.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_pv.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ignitionProbMap.setFilters(QgsMapLayerProxyModel.RasterLayer)
+        self.dlg.layerComboBox_ignitionPoints.setFilters(QgsMapLayerProxyModel.PointLayer)
+        #TODO check for each layerComboBox set if any layer_name matchs its regex else set to None.
+        # extras/better_layerComboBox_matching.py
         layers_byName = { l.name():l for l in QgsProject.instance().mapLayers().values()}
         for lname,layer in layers_byName.items():
             if re.match( 'model.*asc', lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_fuels.setLayer(layer)
+                layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+                layer.triggerRepaint()
             elif re.match( 'mdt.*asc', lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_elevation.setLayer(layer)
             elif re.match( 'cbh', lname) and layer.type() == QgsMapLayerType.RasterLayer:
@@ -300,6 +381,8 @@ class fire2amClass:
                 self.dlg.layerComboBox_ignitionProbMap.setLayer(layer)
             elif re.match( '[Ii]gnition.*[Pp]oint', lname) and layer.type() == QgsMapLayerType.VectorLayer and layer.wkbType() == QgsWkbTypes.Point:
                 self.dlg.layerComboBox_ignitionPoints.setLayer(layer)
+            elif re.match( '.*[Vv]alue.*', lname) and layer.type() == QgsMapLayerType.RasterLayer:
+                self.dlg.layerComboBox_pv.setLayer(layer)
         ''' weather file'''
         if apath := QgsProject.instance().absolutePath():
             wfile = Path( apath, 'Weather.csv')
@@ -313,9 +396,6 @@ class fire2amClass:
                 name = 'check_weather_folder_bkgd'
                 self.task[name] = check_weather_folder_bkgd( name, self.dlg, wfolder)
                 self.taskManager.addTask( self.task[name])
-        ''' default values '''
-        self.dlg.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
-        self.dlg.spinBox_nthreads.setMaximum(cpu_count())
         ''' prepare stats table '''
         st = stats.describe([0,1])
         df = DataFrame( ('Name',*st._fields), index=('Name',*st._fields), columns=['Attributes'])
@@ -328,109 +408,101 @@ class fire2amClass:
         self.dlg.pushButton_restoreDefaults.pressed.connect(self.slot_restoreDefaults)
         self.dlg.pushButton_run.pressed.connect(self.run_All)
         ''' tab landscape '''
-        self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectRaster)
+        self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectFuelRaster)
         self.dlg.layerComboBox_elevation.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_cbh.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_cbd.layerChanged.connect( self.slot_trySelectRaster)
         self.dlg.layerComboBox_ccf.layerChanged.connect( self.slot_trySelectRaster)
-        ''' tab ignitions ''' 
+        self.dlg.layerComboBox_pv.layerChanged.connect( self.slot_trySelectRaster)
+        ''' tab ignitions '''
         self.dlg.layerComboBox_ignitionPoints.layerChanged.connect(self.slot_layerComboBox_ignitionPoints_layerChanged)
         self.dlg.layerComboBox_ignitionProbMap.layerChanged.connect( self.slot_trySelectRaster)
+        self.dlg.radioButton_ignitionPoints.clicked.connect(self.slot_radioButton_ignitionPoints_clicked)
+        self.dlg.radioButton_ignitionProbMap.clicked.connect( self.slot_radioButton_ignitionProbMap_clicked)
         ''' tab weather '''
         self.dlg.fileWidget_weatherFile.fileChanged.connect( self.slot_fileWidget_weatherFile_fileChanged)
         self.dlg.fileWidget_weatherFolder.fileChanged.connect( self.slot_fileWidget_weatherFolder_fileChanged)
-        self.dlg.pushButton_windRandomize.pressed.connect( self.slot_windRandomize)
-        #self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
-        #self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
+        self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
+        self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        #self.dlg.pushButton_run.pressed.connect(self.externalProcess_start)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
         self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
         self.dlg.pushButton.pressed.connect(self.slot_doit)
         ''' tab tables '''
         ''' tab graphs '''
-        #self.dlg.comboBox_plot.currentIndexChanged.connect( self.showPlot)
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
 
-    def slot_windRandomize(self):
-        WD = np.random.randint(0,359)
-        WS = np.random.randint(1,100)
-        self.dlg.spinBox_windDirection.setValue(WD)
-        self.dlg.spinBox_windSpeed.setValue(WS)
+    def slot_radioButton_ignitionProbMap_clicked(self):
+        """ When the raidioButton is selected, check if there's a layer Widget
+            else change to ignition random
+        """
+        if not self.dlg.layerComboBox_ignitionProbMap.currentLayer():
+            self.dlg.radioButton_ignitionRandom.setChecked(True)
+            log('Select a layer before selecting!',pre='No ProbabilityMap!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
-    def showPlot(self, index):
-        log('showing!!!', level=4)
-        self.dlg.plt.show(index)
+    def slot_radioButton_ignitionPoints_clicked(self):
+        """ When the raidioButton is selected, check if there's a layer Widget
+            else change to ignition random
+        """
+        if not self.dlg.layerComboBox_ignitionPoints.currentLayer():
+            self.dlg.radioButton_ignitionRandom.setChecked(True)
+            log('Select a layer before selecting!',pre='No Ignition Layer!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
-    def run_Dialog(self):
-        """Run method that performs all the real work"""
+    def slot_radioButton_weatherFile_clicked(self):
+        """ When the raidioButton is selected, check if there's a file on the fileWidget
+            else change to weatherConstant
+        """
+        if not Path(self.dlg.fileWidget_weatherFile.filePath()).is_file():
+            self.dlg.radioButton_weatherConstant.setChecked(True)
+            log('Select a file first before selecting!',pre='No Weather File!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start_dialog == True:
-            self.first_start_dialog  = False
-            self.dlg = fire2amClassDialog()
-            self.dlg.msgBar.pushMessage(aName+' Hello World!','Keep a project with layers open when interacting', duration=-1, level=Qgis.Info)
-            self.slot_windRandomize()
-            self.dlg.tabWidget.setCurrentIndex(0)
-            self.first_start_setup()
-            self.connect_slots()
-
-        '''
-        if QgsProject.instance().mapLayers() == {}:
-            self.iface.messageBar().pushCritical(aName+': No layers found', 'Open a project with layers and try again')
-            log('Open a project with layers and restore defaults', pre='No layers found', level=3)
-            return
-
-        if self.project != QgsProject().instance():
-            old = self.project
-            self.project = QgsProject().instance()
-            log( 'Old: %s %s New: %s %s'%( old.absoluteFilePath(), old.baseName(),
-                                  self.project.absoluteFilePath(), self.project.baseName()), pre='Project Changed!', level=3, msgBar=self.dlg.msgBar)
-        '''
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        print('result',result)
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+    def slot_radioButton_weatherFolder_clicked(self):
+        """ When the raidioButton is selected, check if there's a directory on the fileWidget
+            else change to weatherConstant
+        """
+        if not Path(self.dlg.fileWidget_weatherFolder.filePath()).is_dir() or self.dlg.fileWidget_weatherFolder.filePath()=='':
+            self.dlg.radioButton_weatherConstant.setChecked(True)
+            log('Select a directory first before selecting!',pre='No Weather Folder!',level=2, msgBar=self.dlg.msgBar, duration=1)
 
     def makeInstance(self):
-        '''mkdir directory, TODO from:copy&paste files to:write layers as new files
+        ''' write instance (exiting in each point if something fails)
+                check args['inFolder'] is new
+                copy fuel definition csv
+                copy fuel raster file
+                if exists, copy elevation, cbh, cbd, ccf layers file
+                weather choosen:
+                    file : copy file
+                    folder: copy folder
+                    constant: make csv
+                ignition choosen:
+                    point : make ignitions.csv
+                    probability map: copy file
         '''
+        # inFolder
         if os.path.isdir( self.args['InFolder']):
             log( 'directory named %s, stopping!'%self.args['InFolder'], pre='Already Exists!', level=3, msgBar=self.dlg.msgBar)
             return
         os.mkdir( self.args['InFolder'])
         log( self.args['InFolder'],pre='Created directory',level=0, msgBar=self.dlg.msgBar)
-        '''
-        spain look up table'''
+        # fuel definition
         copy( os.path.join( self.plugin_dir, 'spain_lookup_table.csv') , self.args['InFolder'])
-        '''
-        fuels'''
-        copy( self.dlg.state['layerComboBox_fuels'].publicSource() , 
+        # fuels layer
+        copy( self.dlg.state['layerComboBox_fuels'].publicSource() ,
                 os.path.join( self.args['InFolder'], 'fuels.asc'))
         log( 'fuels copied',level=0, msgBar=self.dlg.msgBar)
-        ''' 
-        elevation cbh cbd ccf'''
-        for name in ['elevation', 'cbh', 'cbd', 'ccf']:
+        # layers elevation cbh cbd ccf pv
+        for name in ['elevation', 'cbh', 'cbd', 'ccf', 'pv']:
             layer = self.dlg.state['layerComboBox_'+name]
             if layer:
-                if layer.type() == QgsMapLayerType.RasterLayer:
-                    copy( self.dlg.state['layerComboBox_'+name].publicSource() , 
-                        os.path.join( self.args['InFolder'], name+'.asc'))
-                    log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
-        '''
-        weather'''
+                copy( self.dlg.state['layerComboBox_'+name].publicSource(),
+                      os.path.join( self.args['InFolder'], name+'.asc'))
+                log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
+        # weather 
+        # weather constant : read dial and slider to generate Weather.csv
         if self.dlg.state['radioButton_weatherConstant']:
-            ''' read dial and slider to generate Weather.csv '''
             nrows = self.dlg.state['spinBox_windConstLen']
-            iname = self.project.baseName()
+            iname = QgsProject().instance().baseName()
             if iname == '':
                 iname = 'Jaime'
             Instance = [ iname ] *nrows
@@ -438,62 +510,89 @@ class fire2amClass:
             dt = [ (self.now + timedelta(hours=i)).isoformat(timespec='minutes') for i in range(nrows)]
             WD = [ self.dlg.state['spinBox_windDirection'] ] * nrows
             WS = [ self.dlg.state['spinBox_windSpeed'] ] * nrows
-            df = DataFrame( np.vstack((Instance,dt,WD,WS,FireScenario )).T, 
+            df = DataFrame( np.vstack((Instance,dt,WD,WS,FireScenario )).T,
                     columns=['Instance','datetime','WD','WS', 'FireScenario'])
             df.to_csv( os.path.join( self.args['InFolder'],'Weather.csv'), header=True, index=False)
             log( 'speed:%s direction:%s'%(WS,WD), pre='Constant Wind', level=4, msgBar=self.dlg.msgBar)
+        # weather file
         elif self.dlg.state['radioButton_weatherFile']:
-            ''' copy weather file '''
             copy( self.dlg.state['fileWidget_weatherFile'], os.path.join( self.args['InFolder'], 'Weather.csv'))
             log( 'weather file copied', level=0, msgBar=self.dlg.msgBar)
+        # weather folder
         elif self.dlg.state['radioButton_weatherFolder']:
-            ''' copy weather folder '''
             dst = os.path.join( self.args['InFolder'],'Weathers')
             os.mkdir(dst)
             for filename in glob( self.dlg.state['fileWidget_weatherFolder']+sep+'Weather[0-9]*.csv'):
                 copy( filename, dst)
             log( 'weather folder copied', level=0, msgBar=self.dlg.msgBar)
-        ''' 
-        ignitions '''
+        # ignition
+        # ignition point : match layer points to raster layer coords, write Ignitions.csv with cell id
         if self.dlg.state['radioButton_ignitionPoints']:
-            ''' match layer points to raster layer coords, write Ignitions.csv with cell id '''
             points = self.dlg.state['layerComboBox_ignitionPoints']
             raster = self.dlg.state['layerComboBox_fuels']
-            ''' match '''
             cellIds, _, _ = matchPoints2Raster( raster, points)
             Ncell = [ c+1 for c in cellIds ]
             if not Ncell:
                 log( 'for %s into fuel raster (check crs)'%points.name(), pre='No matching point', level=3, msgBar=self.dlg.msgBar)
                 return
-            # TODO simulator accepts more than 1 point
+            # TODO make the simulator accept more than 1 point
             #data = { 'Year':None, 'Ncell': Ncell }
             data = { 'Year':1, 'Ncell': [Ncell[0]] }
             df = DataFrame.from_dict( data)
             #df.fillna(1, inplace=True)
             df.to_csv( os.path.join( self.args['InFolder'],'Ignitions.csv'), header=True, index=False)
             log( 'written', pre='Ignition points', level=0, msgBar=self.dlg.msgBar)
-
+        # ignition prob map
         elif self.dlg.state['radioButton_ignitionProbMap']:
-            ipm_layer = self.dlg.state['layerComboBox_ignitionProbMap']
-            copy( ipm_layer.publicSource() , os.path.join(self.args['InFolder'],'py.asc'))
+            copy( self.dlg.state['layerComboBox_ignitionProbMap'].publicSource(),
+                  os.path.join(self.args['InFolder'],'py.asc'))
             log( 'ignitionProbMap copied', level=0, msgBar=self.dlg.msgBar)
+        log( 'makeInstance ok!', level=0, msgBar=self.dlg.msgBar)
+
+    def slot_trySelectFuelRaster(self, layer):
+        try:
+            if not layer:
+                return
+            layer_name = layer.name()
+            ret, val = check_gdal_driver_name( layer, driver_name='AAIGrid')
+            if not ret:
+                log(f'Selected fuel layer "{layer_name}" has incompatible "{val}" driver!', pre='Translate to AAIGrid!', level=3, msgBar=self.dlg.msgBar)
+                return
+            if layer.crs().isValid():
+                self.crs = layer.crs
+                self.extent = layer.extent
+            else:
+                log(f'Selected fuel layer "{layer_name}" CRS not set!', pre='Fuel CRS!', level=2, msgBar=self.dlg.msgBar)
+                if QgsProject().instance().crs().isValid():
+                    self.crs = QgsProject().instance().crs
+                    layer.setCrs(self.crs())
+                    self.extent = layer.extent
+                    log(f'Defaulting to project CRS!', pre='Fuel CRS set from project!', level=2, msgBar=self.dlg.msgBar)
+                else:
+                    #Note maybe the program never reachs here!
+                    log(f'Neither the project nor the Fuel layer have a valid CRS!', pre='Must set CRSs!', level=2, msgBar=self.dlg.msgBar)
+                    self.crs = None
+            self.W = layer.width()
+            self.H = layer.height()
+            layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+            layer.triggerRepaint()
+            log(f'Fuel layer selected name:{layer_name}, W:{self.W}, H:{self.H}, crs:{self.crs().description()}, extent:{self.extent().asWktCoordinates()}', level=0)
+        except Exception as e:
+            log(f'"{e}" problem selecting "{layer.name()}"', pre='Fuel Exception!', level=3, msgBar=self.dlg.msgBar)
 
     def slot_trySelectRaster(self, layer):
         try:
             if not layer:
                 return
             name = self.dlg.sender().objectName()
-            if not layer.type() == QgsMapLayerType.RasterLayer:
-                log( '%s selected layer %s'%(name,layer.name()), pre='Not Raster!', level=2, msgBar=self.dlg.msgBar)
-                return
+            #if not layer.type() == QgsMapLayerType.RasterLayer:
+            #    log( '%s selected layer %s'%(name,layer.name()), pre='Not Raster!', level=2, msgBar=self.dlg.msgBar)
+            #    return
             ret, val = check_gdal_driver_name( layer, driver_name='AAIGrid')
             if not ret:
                 log( '%s selected layer %s has %s driver. Translate to AAIGrid!'%(name,layer.name(),val), pre='Not AAIGrid', level=2, msgBar=self.dlg.msgBar)
                 return
             log( '%s selected layer %s'%(name,layer.name()), pre='Is AAIGrid raster!' , level=4, msgBar=self.dlg.msgBar)
-            if name == 'layerComboBox_fuels':
-                layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
-                layer.triggerRepaint()
         except Exception as e:
             log(e, pre='%s selected layer %s Exception'%(name,layer.name()), level=3, msgBar=self.dlg.msgBar)
 
@@ -536,34 +635,7 @@ class fire2amClass:
         self.task[name] = check_weather_folder_bkgd( name, self.dlg, directory)
         self.taskManager.addTask( self.task[name])
 
-    def old_slot_fileWidget_weatherFolder_fileChanged(self, directory):
-        def restore():
-            self.dlg.fileWidget_weatherFolder.blockSignals(True)
-            self.dlg.fileWidget_weatherFolder.setFilePath( self.project.absolutePath())
-            self.dlg.fileWidget_weatherFolder.blockSignals(False)
-            self.dlg.radioButton_weatherConstant.setChecked(True)
-            self.dlg.args['nweathers'] = 0
-        try:
-            if fire2a_checks.weather_folder(Path(directory)):
-                self.dlg.args['nweathers'] = len(list(Path(directory).glob('Weather[0-9]*.csv')))
-                self.dlg.radioButton_weatherFolder.setChecked(True)
-                self.dlg.state['radioButton_weatherFolder'] = True
-                self.dlg.state['fileWidget_weatherFolder'] = directory
-                log('Found in %s'%directory, pre='Weathers[1..%s].csv'%self.dlg.args['nweathers'], level=4, msgBar=self.dlg.msgBar)
-            else:
-                log('Files must be a consecutive numbered sequence [1..N] or a file is wrong check log', pre='Weather[1..N].csv problem', level=2, msgBar=self.dlg.msgBar)
-                restore()
-                return
-        except Exception as e:
-            log( e, pre='Weather Folder %s exception'%directory, level=2, msgBar=self.dlg.msgBar)
-            restore()
-
     def slot_fileWidget_weatherFile_fileChanged(self, afile):
-        def restore():
-            self.dlg.fileWidget_weatherFile.blockSignals(True)
-            self.dlg.fileWidget_weatherFile.setFilePath( self.project.absolutePath())
-            self.dlg.fileWidget_weatherFile.blockSignals(False)
-            self.dlg.radioButton_weatherConstant.setChecked(True)
         try:
             afile = Path(afile)
             if fire2a_checks.weather_file(afile):
@@ -571,32 +643,37 @@ class fire2amClass:
                 self.dlg.state['radioButton_weatherFile'] = True
                 self.dlg.state['fileWidget_weatherFile'] = str(afile)
                 log('looks ok!', pre='Weather.csv', level=1, msgBar=self.dlg.msgBar)
+                return
             else:
-                log(f'file {afile.parent} format problem', pre='Weather.csv', level=2, msgBar=self.dlg.msgBar)
+                log(f'file {afile.parent} format problem', pre='Weather.csv', level=3, msgBar=self.dlg.msgBar)
         except Exception as e:
             log(e, pre=f'Single Weather.csv file {afile} exception {e}', level=2, msgBar=self.dlg.msgBar)
-            restore()
+        self.dlg.fileWidget_weatherFile.blockSignals(True)
+        if QgsProject().instance().absolutePath() !='':
+            self.dlg.fileWidget_weatherFile.setFilePath( QgsProject().instance().absolutePath())
+        self.dlg.radioButton_weatherConstant.setChecked(True)
+        self.dlg.fileWidget_weatherFile.blockSignals(False)
 
     def makeArgs(self):
         ''' 0 empty args
-            1 update with dlg values from spinboxes 
+            1 update with dlg values from spinboxes
                 delete extra ui spinboxes helpers
             2 update with ui logic
             2a  weathers
             2b  ignitions
             2c  nsims
             3 delete default args
-            4 update with argparse dialog 
+            4 update with argparse dialog
                 if opened: with true clicked boxes
                 set In|OutFolders = Instance+now
-            5 generate command line string 
+            5 generate command line string
         '''
         # 0
         args = {}
         gen_cmd = ''
         # 1
-        args.update( { o.objectName()[o.objectName().index('_')+1:]: o.value() 
-            for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox), 
+        args.update( { o.objectName()[o.objectName().index('_')+1:]: o.value()
+            for o in self.dlg.findChildren( (QDoubleSpinBox, QSpinBox),
                                         options= Qt.FindChildrenRecursively)})
         args.update( { o.objectName()[o.objectName().index('_')+1:]: o.isChecked()
             for o in self.dlg.findChildren( QCheckBox,
@@ -637,13 +714,13 @@ class fire2amClass:
         if self.dlg.state['checkBox_betweennessCentrality'] \
            or self.dlg.state['checkBox_downstreamProtectionValue']:
             args['OutMessages'] = True
-        # 3 discard default value args 
+        # 3 discard default value args
         popkeys = []
         for dkey in self.default_args:
             for akey in args:
                 if dkey == akey and self.default_args[dkey] == args[akey]:
                     popkeys += [akey]
-        for akey in popkeys: 
+        for akey in popkeys:
             args.pop(akey)
         log('make args step 3',args, level=0)
         # 4 update argparse dialog
@@ -678,7 +755,7 @@ class fire2amClass:
                     else:
                         gen_cmd += self.parser[key]['option_strings'][0] + ' ' + str(args[key]) + sep + ' '
         self.args = args
-        self.gen_cmd = gen_cmd 
+        self.gen_cmd = gen_cmd
         log('make args step 5',args, level=0)
         log('make args step 5',gen_cmd, level=0)
 
@@ -709,6 +786,12 @@ class fire2amClass:
                     if not ret:
                         log( '%s selected layer %s has %s driver. Translate to AAIGrid!'%(key, layer.name(),val), pre='Not AAIGrid', level=2, msgBar=self.dlg.msgBar)
                         return False
+                    if self.W != layer.width():
+                        log(f'layer {layer.name()} Width:{layer.width()} != {self.W} from fuels layer', pre='Raster Mismatch', level=3, msgBar=self.dlg.msgBar)
+                        return False
+                    if self.H != layer.height():
+                        log(f'layer {layer.name()} Height:{layer.height()} != {self.H} from fuels layer', pre='Raster Mismatch', level=3, msgBar=self.dlg.msgBar)
+                        return False
 
                 if layer.crs() == QgsCoordinateReferenceSystem():
                     log('has not been set for',layer.name(),'in', key, pre='CRS error', level=3, msgBar=self.dlg.msgBar)
@@ -727,8 +810,11 @@ class fire2amClass:
     def updateProject(self):
         self.now = datetime.now()
         self.project = QgsProject().instance()
-        self.crs = self.project.crs()
-        self.extent = self.dlg.state['layerComboBox_fuels'].extent()
+        layer = self.dlg.state['layerComboBox_fuels']
+        self.crs = layer.crs()
+        self.W = layer.width()
+        self.H = layer.height()
+        self.extent = layer.extent()
 
     def run_All(self):
         ''' run simulation '''
@@ -737,9 +823,6 @@ class fire2amClass:
         if not self.checkMap():
             return
         self.makeArgs()
-        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
         self.makeInstance()
         self.externalProcess_start()
 
@@ -797,11 +880,6 @@ class fire2amClass:
         self.checkMap()
         header, arg_str, gen_args, workdir = self.argdlg.get()
         self.args['OutFolder'] = Path(gen_args['OutFolder'])
-        #TODO
-        #self.geopackage = os.path.join( self.args['OutFolder'], 'outputs.gpkg')
-        self.geopackage = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.out_gpkg = Path( self.args['OutFolder'], 'outputs.gpkg')
-        self.stats_gpkg = Path( self.args['OutFolder'], 'statistics.gpkg')
 
         self.proc = QProcess()
         self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
@@ -864,7 +942,7 @@ class fire2amClass:
             ''' process logfile '''
             layerName = 'Ignition_Points'
             out_gpkg = Path( self.args['OutFolder'], layerName+'.gpkg')
-            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished, 
+            self.task['log'] = QgsTask.fromFunction( layerName, afterTask_logFile, on_finished=self.on_finished,
                     logText=logText, layerName=layerName, baseLayer=baseLayer, out_gpkg=out_gpkg)
             self.task['log'].taskCompleted.connect( partial( self.ui_addVectorLayer, out_gpkg, layerName, 'points_layerStyle.qml'))
             self.taskManager.addTask( self.task['log'])
@@ -886,14 +964,14 @@ class fire2amClass:
                 'OutRos'              in self.args.keys(),
                 'OutCrownConsumption' in self.args.keys() and 'cros' in self.args.keys(),
                 'OutCrown'            in self.args.keys() and 'cros' in self.args.keys()]
-        dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire'] 
+        dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire']
         fileNames = ['FL', 'Intensity', 'ROSFile', 'Cfb', 'Crown']
         layerNames = ['Flame_Length', 'Byram_Intensity', 'Hit_RateOfSpread', 'CrownFire_FuelConsumptionRatio', 'CrownFire_Scar']
         ''' background tasks '''
         for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
             if do:
-                if Path(self.args['OutFolder'], dn).is_dir(): 
-                    self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, Path( self.args['OutFolder'], ln+'.gpkg'), self.stats_gpkg, self.extent, self.crs)
+                if Path(self.args['OutFolder'], dn).is_dir():
+                    self.task[ln] = after_asciiDir( ln, self.iface, self.dlg, self.args, dn, fn, ln, self.extent, self.crs)
                     self.taskManager.addTask( self.task[ln])
                 else:
                     log('folder not available', pre='No '+dn, level=3, msgBar=self.dlg.msgBar)
@@ -914,7 +992,6 @@ class fire2amClass:
                 self.task[name] = after_downstream_protection_value( name, self.iface, self.dlg, self.args, self.plugin_dir, self.dlg.state['layerComboBox_fuels'], self.dlg.state['layerComboBox_pv'])
                 self.taskManager.addTask( self.task[name])
 
-
     def on_finished(self, exception, value=None):
         ''' default finish qgs task '''
         if not exception:
@@ -934,8 +1011,96 @@ class fire2amClass:
         ''' this connects to the unnamed button on the run tab
             is mainly for live debugging stuff
             pressing the unnamed button next to kill, terminate, dev
+        '''
+        self.makeArgs()
         self.dlg.updateState()
         self.updateProject()
-        self.makeArgs()
-        '''
-        layer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'fuelsSB_layerStyle.qml'))
+        self.checkMap()
+        header, arg_str, gen_args, workdir = self.argdlg.get()
+        self.args['OutFolder'] = Path(gen_args['OutFolder'])
+        ar = shlex_split( header + ' ' + arg_str )
+        sim = C2FSB(proc_dir=self.proc_dir, proc_exe=self.proc_exe, plainTextEdit=self.dlg.plainTextEdit)
+        sim.start(ar[0], ar[1:])
+        
+
+ExitStatus = {0:'CrashExit',
+              1:'NormalExit'}
+#state()
+ProcessState = {0:'NotRunning',
+                1:'Running',
+                2:'Starting'}
+#error()
+ProcessError = {0:'Crashed',
+                1:'FailedToStart',
+                2:'ReadError',
+                3:'Timedout',
+                4:'UnknownError',
+                5:'WriteError'}
+
+class C2FSB(QProcess):
+    def __init__(self, parent=None, proc_dir=None, proc_exe=None, plainTextEdit=None):
+        super().__init__(parent)
+        self.setInputChannelMode( QProcess.ForwardedInputChannel)
+        self.setProcessChannelMode( QProcess.SeparateChannels)
+        self.readyReadStandardOutput.connect(self.read_standard_output)
+        self.readyReadStandardError.connect(self.read_standard_error)
+        self.proc_dir = proc_dir
+        self.proc_exe = proc_exe
+        self.setWorkingDirectory( str(proc_dir))
+        self.plainTextEdit = plainTextEdit
+        #self.proc.stateChanged.connect(self.externalProcess_handle_state)
+        #self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
+        self.state = self.state()
+        self.end = None
+
+    def append_message(self, msg):
+        self.plainTextEdit.appendPlainText(msg)
+
+    def start(self, gen_cmd, on_finished, proc_exe=None, proc_dir=None):
+        if (self.end is None) or (self.end is True):
+            pass
+        else:
+            qlog('end is false, probably running')
+
+        if proc_dir:
+            self.setWorkingDirectory( proc_dir)
+        if proc_exe:
+            self.proc_exe = proc_exe
+        self.finished.connect( on_finished)
+        super().start(self.proc_exe, gen_cmd)
+        self.fin = False
+        #ar = shlex_split( executable+' '+command, posix="win" not in plt_sys())
+        #super().start(ar[0], ar[1:])
+
+    def terminate(self):
+        state = self.state()
+        if state != QProcess.ProcessState.NotRunning:
+            QgsMessageLog.logMessage(f"QProcess terminating, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
+            self.terminate()
+        else:
+            QgsMessageLog.logMessage(f"QProcess can't terminate, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
+
+    def on_finished(self):
+        exit_code = self.exitCode()
+        self.exco = shallow_copy(exit_code)
+        self.end = True
+        if exit_code==QProcess.ExitStatus.NormalExit:
+            qlog('Normal Exit', Qgis.Success)
+            self.after()
+        elif exit_code==QProcess.ExitStatus.CrashExit:
+            qlog('Crash Exit', Qgis.Critical)
+        else:
+            qlog('Unknown Exit', Qgis.Warning)
+
+    def read_standard_output(self):
+        data = self.proc.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        self.append_message('===std=OUT===\n'+stdout)
+
+    def read_standard_error(self):
+        data = self.proc.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        self.append_message('===std=ERR===\n'+stderr)
+
+def qlog(msg, level=Qgis.Info):
+    QgsMessageLog.logMessage(str(args), MSGCAT, level)

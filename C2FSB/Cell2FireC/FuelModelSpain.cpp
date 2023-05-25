@@ -2393,7 +2393,7 @@ bool checkActive(inputs * data,main_outs* at) //En s&b se usa fm10
 	
 	// Aux
 	float  ros, bros, lb, fros;
-	bool crownFire;
+	bool crownFire=false;
     
     // Populate fuel coefs struct
 	//ptr->fueltype = data->fueltype;
@@ -2570,7 +2570,8 @@ void determine_destiny_metrics(inputs* data, fuel_coefs* ptr, main_outs* metrics
 	metrics->fl = flame_length(data, ptr);
 	// Step 9: Byram Intensity
 	metrics->byram = byram_intensity(metrics, ptr);
-
+	//Set cfb value for no crown fire scenario
+	metrics->cfb =0;
     // Step 10: Criterion for Crown Fire Initiation (no init if user does not want to include it)
     if (data->cros) {
         crownFire = fire_type(data, metrics);
