@@ -6,7 +6,7 @@
 name=Fire Simulator Analytics Management
 qgisMinimumVersion=3.0
 description=Simulate a forest fires under different weather and fire model scenarios
-version=0.1
+version=0.9.1
 author=fdobadvel (gui) & fire2a team
 email=fire2a@fire2a.com
 

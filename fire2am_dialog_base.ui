@@ -886,7 +886,7 @@ or imposible configurations</string>
        <item row="0" column="1">
         <widget class="QLabel" name="label_17">
          <property name="text">
-          <string>version 0.9
+          <string>version 0.9.1
  Documentation at: fdobad.github.io/doctest
 Subscribe to the repo to get notified of new releases
 Ask the fire2a team for access to the repo</string>
