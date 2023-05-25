@@ -301,7 +301,7 @@ def Parser2():
                         dest="onlyProcessing",
                         default=False,
                         action="store_true")
-    fire.add_argument("--bbo",
+    heuristic.add_argument("--bbo",
                         help="Use factors in BBOFuels.csv file",
                         dest="BBO",
                         default=False,
