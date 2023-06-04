@@ -40,16 +40,23 @@ TODO:
 2.2 else listen to ui signals
 
 3. run_All : executes the simulation
-        dlg.updateState() : get all ui parameters updated
+        dlg.updateState() : get all ui parameters updated to dlg.state dictionary
         updateProject() :
             get global params (fuel layer W,H,extent,crs)
-            self.project : TODO discard  ? be able to run without a project saved
-            get datetime.now() TODO discard? 
-        checkMap()
-        makeArgs()
+            self.project : TODO discard ? be able to run without a project saved
+n--         get datetime.now() TODO discard? 
+        checkMap() : check raster sizes & crs match
+        makeArgs() : argparse
+            4. if argparse
+                infolder = Instance_nowString
+                proc dir&executable
         makeInstance()
         externalProcess_start()
-    
+
+4. externalProcess_finished
+        proc = None
+        after()
+5. after
 
 
 """
@@ -498,7 +505,7 @@ class fire2amClass:
                 copy( self.dlg.state['layerComboBox_'+name].publicSource(),
                       os.path.join( self.args['InFolder'], name+'.asc'))
                 log( name+' layer copied', level=0, msgBar=self.dlg.msgBar)
-        # weather 
+        # weather
         # weather constant : read dial and slider to generate Weather.csv
         if self.dlg.state['radioButton_weatherConstant']:
             nrows = self.dlg.state['spinBox_windConstLen']
@@ -520,7 +527,7 @@ class fire2amClass:
             log( 'weather file copied', level=0, msgBar=self.dlg.msgBar)
         # weather folder
         elif self.dlg.state['radioButton_weatherFolder']:
-            dst = os.path.join( self.args['InFolder'],'Weathers')
+            dst = os.path.join( self.args['InFolder'], 'Weathers')
             os.mkdir(dst)
             for filename in glob( self.dlg.state['fileWidget_weatherFolder']+sep+'Weather[0-9]*.csv'):
                 copy( filename, dst)
@@ -626,7 +633,7 @@ class fire2amClass:
 
     def slot_fileWidget_weatherFolder_fileChanged(self, directory):
         name = 'check_weather_folder_bkgd'
-        if name in self.task.keys():
+        if name in self.task:
             if self.task[name].finished:
                 pass
             elif self.task[name].status() not in [QgsTask.Complete, QgsTask.Terminated]:
@@ -708,7 +715,7 @@ class fire2amClass:
         log('make args step 2',args, level=0)
         # 2d crow fire logic
         # TODO ? [ 'OutFl', 'OutIntensity', 'OutRos']
-        if 'OutCrown' in args.keys() or 'OutCrownConsumption' in args.keys():
+        if 'OutCrown' in args or 'OutCrownConsumption' in args:
             args['cros'] = True
         # 2e betweenness_centrality
         if self.dlg.state['checkBox_betweennessCentrality'] \
@@ -733,11 +740,11 @@ class fire2amClass:
             ''' did opened '''
             args.update(self.argdlg.gen_args)
             ''' but didnt mention ioFolder '''
-            if 'InFolder' not in self.argdlg.gen_args.keys():
+            if 'InFolder' not in self.argdlg.gen_args:
                 args['InFolder'] = Path( self.project.absolutePath(), 'Instance'+self.now_str)
             else:
                 args['InFolder'] = Path( args['InFolder'])
-            if 'OutFolder' not in self.argdlg.gen_args.keys():
+            if 'OutFolder' not in self.argdlg.gen_args:
                 args['OutFolder'] = Path( args['InFolder'], 'results')
             else:
                 args['OutFolder'] = Path( args['OutFolder'])
@@ -746,7 +753,7 @@ class fire2amClass:
         log('make args step 4',args, level=0)
         # 5 generate command line options
         for key,val in args.items():
-            if key in self.parser.keys():
+            if key in self.parser:
                 if self.parser[key]['type'] is None:
                     gen_cmd += self.parser[key]['option_strings'][0] + ' '
                 else:
@@ -792,7 +799,7 @@ class fire2amClass:
                     if self.H != layer.height():
                         log(f'layer {layer.name()} Height:{layer.height()} != {self.H} from fuels layer', pre='Raster Mismatch', level=3, msgBar=self.dlg.msgBar)
                         return False
-
+                # TODO stop checking CRS
                 if layer.crs() == QgsCoordinateReferenceSystem():
                     log('has not been set for',layer.name(),'in', key, pre='CRS error', level=3, msgBar=self.dlg.msgBar)
                     return False
@@ -959,11 +966,11 @@ class fire2amClass:
         else:
             log('Grids folder not available', pre='No Grids', level=3, msgBar=self.dlg.msgBar)
         ''' stats '''
-        doit = ['OutFl'               in self.args.keys(),
-                'OutIntensity'        in self.args.keys(),
-                'OutRos'              in self.args.keys(),
-                'OutCrownConsumption' in self.args.keys() and 'cros' in self.args.keys(),
-                'OutCrown'            in self.args.keys() and 'cros' in self.args.keys()]
+        doit = ['OutFl'               in self.args,
+                'OutIntensity'        in self.args,
+                'OutRos'              in self.args,
+                'OutCrownConsumption' in self.args and 'cros' in self.args,
+                'OutCrown'            in self.args and 'cros' in self.args]
         dirNames = ['FlameLength', 'Intensity', 'RateOfSpread', 'CrownFractionBurn','CrownFire']
         fileNames = ['FL', 'Intensity', 'ROSFile', 'Cfb', 'Crown']
         layerNames = ['Flame_Length', 'Byram_Intensity', 'Hit_RateOfSpread', 'CrownFire_FuelConsumptionRatio', 'CrownFire_Scar']
