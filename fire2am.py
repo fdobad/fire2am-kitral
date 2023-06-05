@@ -443,8 +443,9 @@ class fire2amClass:
         self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
         self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
-        self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
+        #self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
+        #self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
+        self.dlg.pushButton_kill.pressed.connect(self.simulation_process.kill)
         #self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
         self.dlg.pushButton_terminate.pressed.connect(self.simulation_process.terminate)
         self.dlg.pushButton.pressed.connect(self.slot_doit)
@@ -843,94 +844,97 @@ class fire2amClass:
             return
         self.makeArgs()
         self.writeInstance()
-        self.externalProcess_start()
+        cmd = self.proc_exe +' '+ self.gen_cmd
+        qlog(f'cmd {cmd}')
+        self.simulation_process.start( cmd)
+        #self.externalProcess_start()
 
-    def externalProcess_message(self, s):
-        self.dlg.plainTextEdit.appendPlainText(s)
+    #def externalProcess_message(self, s):
+    #    self.dlg.plainTextEdit.appendPlainText(s)
 
-    def externalProcess_kill(self):
-        if self.proc:
-            self.externalProcess_message('Killing run process with state: '+self.name_state[self.proc.state()])
-            self.proc.kill()
-            return
-        log('Nothing to kill', pre='Run process', level=1, msgBar=self.dlg.msgBar)
+    #def externalProcess_kill(self):
+    #    if self.proc:
+    #        self.externalProcess_message('Killing run process with state: '+self.name_state[self.proc.state()])
+    #        self.proc.kill()
+    #        return
+    #    log('Nothing to kill', pre='Run process', level=1, msgBar=self.dlg.msgBar)
 
-    def externalProcess_terminate(self):
-        if self.proc:
-            self.externalProcess_message('Terminating run process with state: '+self.name_state[self.proc.state()])
-            self.proc.terminate()
-            return
-        log('Nothing to terminate', pre='Run process', level=1, msgBar=self.dlg.msgBar)
+    #def externalProcess_terminate(self):
+    #    if self.proc:
+    #        self.externalProcess_message('Terminating run process with state: '+self.name_state[self.proc.state()])
+    #        self.proc.terminate()
+    #        return
+    #    log('Nothing to terminate', pre='Run process', level=1, msgBar=self.dlg.msgBar)
 
-    def externalProcess_start(self):
-        if self.proc is None:
-            self.externalProcess_message('Starting run process '+self.gen_cmd)
-            log('Starting run process '+self.gen_cmd,level=0)
-            self.proc = QProcess()
-            self.proc.setInputChannelMode(QProcess.ForwardedInputChannel)
-            self.proc.setProcessChannelMode( QProcess.SeparateChannels)
-            self.proc.readyReadStandardOutput.connect(self.externalProcess_handle_stdout)
-            self.proc.readyReadStandardError.connect(self.externalProcess_handle_stderr)
-            self.proc.stateChanged.connect(self.externalProcess_handle_state)
-            self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
-            self.proc.setWorkingDirectory( self.proc_dir)
-            self.externalProcess_message('workdir %s'%self.proc_dir)
-            ar = shlex_split( self.proc_exe +' '+ self.gen_cmd , posix="win" not in sys.platform )
-            self.externalProcess_message('args %s'%ar)
-            log( 'ar', *ar, level=0)
-            self.proc.start( ar[0], ar[1:] )
-            self.externalProcess_message('Started')
-            log('Started',level=0)
-            ''' debug basic
-            self.proc.setWorkingDirectory( os.path.join( self.plugin_dir, 'extras'))
-            self.proc.start("python3", ['dummy_proc.py'])
-            '''
+    #def externalProcess_start(self):
+    #    if self.proc is None:
+    #        self.externalProcess_message('Starting run process '+self.gen_cmd)
+    #        log('Starting run process '+self.gen_cmd,level=0)
+    #        self.proc = QProcess()
+    #        self.proc.setInputChannelMode(QProcess.ForwardedInputChannel)
+    #        self.proc.setProcessChannelMode( QProcess.SeparateChannels)
+    #        self.proc.readyReadStandardOutput.connect(self.externalProcess_handle_stdout)
+    #        self.proc.readyReadStandardError.connect(self.externalProcess_handle_stderr)
+    #        self.proc.stateChanged.connect(self.externalProcess_handle_state)
+    #        self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
+    #        self.proc.setWorkingDirectory( self.proc_dir)
+    #        self.externalProcess_message('workdir %s'%self.proc_dir)
+    #        ar = shlex_split( self.proc_exe +' '+ self.gen_cmd , posix="win" not in sys.platform )
+    #        self.externalProcess_message('args %s'%ar)
+    #        log( 'ar', *ar, level=0)
+    #        self.proc.start( ar[0], ar[1:] )
+    #        self.externalProcess_message('Started')
+    #        log('Started',level=0)
+    #        ''' debug basic
+    #        self.proc.setWorkingDirectory( os.path.join( self.plugin_dir, 'extras'))
+    #        self.proc.start("python3", ['dummy_proc.py'])
+    #        '''
 
-    def externalProcess_start_dev(self):
-        if self.first_start_argparse:
-            log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
-            return
-        if self.proc:
-            log('Process is running', pre="Can't run dev mode", level=2)
-            return
+    #def externalProcess_start_dev(self):
+    #    if self.first_start_argparse:
+    #        log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
+    #        return
+    #    if self.proc:
+    #        log('Process is running', pre="Can't run dev mode", level=2)
+    #        return
 
-        self.dlg.updateState()
-        self.updateProject()
-        self.checkMap()
-        header, arg_str, gen_args, workdir = self.argdlg.get()
-        self.args['OutFolder'] = Path(gen_args['OutFolder'])
+    #    self.dlg.updateState()
+    #    self.updateProject()
+    #    self.checkMap()
+    #    header, arg_str, gen_args, workdir = self.argdlg.get()
+    #    self.args['OutFolder'] = Path(gen_args['OutFolder'])
 
-        self.proc = QProcess()
-        self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
-        self.proc.setProcessChannelMode( QProcess.SeparateChannels)
-        self.proc.readyReadStandardOutput.connect( self.externalProcess_handle_stdout)
-        self.proc.readyReadStandardError.connect( self.externalProcess_handle_stderr)
-        self.proc.stateChanged.connect( self.externalProcess_handle_state)
-        self.proc.finished.connect( self.externalProcess_finished)
+    #    self.proc = QProcess()
+    #    self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
+    #    self.proc.setProcessChannelMode( QProcess.SeparateChannels)
+    #    self.proc.readyReadStandardOutput.connect( self.externalProcess_handle_stdout)
+    #    self.proc.readyReadStandardError.connect( self.externalProcess_handle_stderr)
+    #    self.proc.stateChanged.connect( self.externalProcess_handle_state)
+    #    self.proc.finished.connect( self.externalProcess_finished)
 
-        log('Starting DEV run'+arg_str,level=0)
-        self.proc.setWorkingDirectory( workdir)
-        ar = shlex_split( header + ' ' + arg_str )
-        self.proc.start( ar[0], ar[1:] )
-        self.externalProcess_message('Started DEV run:\n\t%s\n\t%s'%(workdir,ar))
+    #    log('Starting DEV run'+arg_str,level=0)
+    #    self.proc.setWorkingDirectory( workdir)
+    #    ar = shlex_split( header + ' ' + arg_str )
+    #    self.proc.start( ar[0], ar[1:] )
+    #    self.externalProcess_message('Started DEV run:\n\t%s\n\t%s'%(workdir,ar))
 
-    def externalProcess_handle_stderr(self):
-        data = self.proc.readAllStandardError()
-        stderr = bytes(data).decode("utf8")
-        self.externalProcess_message('!@#$%^&* stdError stream:\n'+stderr)
+    #def externalProcess_handle_stderr(self):
+    #    data = self.proc.readAllStandardError()
+    #    stderr = bytes(data).decode("utf8")
+    #    self.externalProcess_message('!@#$%^&* stdError stream:\n'+stderr)
 
-    def externalProcess_handle_stdout(self):
-        data = self.proc.readAllStandardOutput()
-        stdout = bytes(data).decode("utf8")
-        self.externalProcess_message(stdout)
+    #def externalProcess_handle_stdout(self):
+    #    data = self.proc.readAllStandardOutput()
+    #    stdout = bytes(data).decode("utf8")
+    #    self.externalProcess_message(stdout)
 
-    def externalProcess_handle_state(self, state):
-        self.externalProcess_message('State changed: '+self.name_state[state])
+    #def externalProcess_handle_state(self, state):
+    #    self.externalProcess_message('State changed: '+self.name_state[state])
 
-    def externalProcess_finished(self):
-        self.externalProcess_message("Process finished.")
-        self.proc = None
-        self.after()
+    #def externalProcess_finished(self):
+    #    self.externalProcess_message("Process finished.")
+    #    self.proc = None
+    #    self.after()
 
     def after(self):
         ''' After the simulation, check if then do:
@@ -957,7 +961,8 @@ class fire2amClass:
             with open( self.args['OutFolder'] / 'LogFile.txt', 'rb', buffering=0) as afile:
                 logText = afile.read().decode()
             ''' print into run text area '''
-            self.externalProcess_message( logText)
+            self.simulation_process.append_message( logText)
+            #self.externalProcess_message( logText)
             ''' process logfile '''
             layerName = 'Ignition_Points'
             out_gpkg = Path( self.args['OutFolder'], layerName+'.gpkg')
@@ -1114,6 +1119,14 @@ class C2FSB(QProcess):
             qlog('Terminate signal sent!', level=Qgis.Success)
         else:
             qlog(f"Can't send terminate signal! current state:{ProcessState.get(self.state_code,'!Unknown')}, ended{self.ended}", level=Qgis.Warning)
+
+    def kill(self):
+        self.log_stat('kill')
+        if self.state_code != QProcess.ProcessState.NotRunning:
+            super().kill()
+            qlog('Kill signal sent!', level=Qgis.Success)
+        else:
+            qlog(f"Can't send kill signal! current state:{ProcessState.get(self.state_code,'!Unknown')}, ended{self.ended}", level=Qgis.Warning)
 
     def on_finished(self):
         self.ended = True
