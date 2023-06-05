@@ -161,9 +161,10 @@ class fire2amClass:
             if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire.exe').is_file():
                 qlog('NO BINARY FOUND!')
                 return
-        if plt_sys()!='Windows':
+        else:
             if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire').is_file():
                 qlog('NO BINARY FOUND!')
+                return
             else:
                 os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
 
@@ -335,6 +336,7 @@ class fire2amClass:
             self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
+            self.simulation_process = C2FSB( proc_dir=self.proc_dir, on_finished=self.after, plainTextEdit=self.dlg.plainTextEdit)
             self.connect_slots()
         # removed check if they are layers present
         #if QgsProject.instance().mapLayers() == {}:
@@ -443,7 +445,8 @@ class fire2amClass:
         ''' tab run '''
         self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
         self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
-        self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
+        #self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
+        self.dlg.pushButton_terminate.pressed.connect(self.simulation_process.terminate)
         self.dlg.pushButton.pressed.connect(self.slot_doit)
         ''' tab tables '''
         ''' tab graphs '''
@@ -1037,7 +1040,7 @@ class fire2amClass:
         self.writeInstance()
         cmd = self.proc_exe +' '+ self.gen_cmd
         qlog(f'cmd {cmd}')
-        self.simulation_process = C2FSB( proc_dir=self.proc_dir, plainTextEdit=self.dlg.plainTextEdit)
+        #self.simulation_process = C2FSB( proc_dir=self.proc_dir, plainTextEdit=self.dlg.plainTextEdit)
         self.simulation_process.start( cmd)
 
 
@@ -1067,10 +1070,8 @@ class C2FSB(QProcess):
         self.stateChanged.connect( self.on_state_changed)
         if proc_dir:
             self.setWorkingDirectory( str(proc_dir))
-        if on_finished:
-            self.finished.connect( on_finished)
-        else:
-            self.finished.connect( self.on_finished)
+        self.finished.connect( self.on_finished)
+        self.after = on_finished
         self.plainTextEdit = plainTextEdit
         self.started = None
         self.ended = None
@@ -1086,14 +1087,14 @@ class C2FSB(QProcess):
         qlog(f'{msg} \
                started:{self.started}, \
                  ended:{self.ended}, \
-                 state:{ProcessState[self.state_code]}, \
-                 error:{ProcessError[self.error_code]}, \
-             exit_code:{ExitStatus[self.exit_code]}')
+                 state:{ProcessState.get(self.state_code,"!Unknown")}, \
+                 error:{ProcessError.get(self.error_code,"!Unknown")}, \
+             exit_code:{ExitStatus.get(self.exit_code,"!Unknown")}')
 
     def append_message(self, msg):
         self.plainTextEdit.appendPlainText(msg)
 
-    def start(self, cmd, on_finished=None, proc_dir=None):
+    def start(self, cmd, proc_dir=None):
         self.log_stat('start INI')
         if not self.ended:
             if self.state_code == QProcess.ProcessState.Running or self.state_code == QProcess.ProcessState.Starting:
@@ -1101,8 +1102,6 @@ class C2FSB(QProcess):
                 return
         if proc_dir:
             self.setWorkingDirectory( proc_dir)
-        if on_finished:
-            self.finished.connect( on_finished)
         super().start(cmd)
         self.started = True
         self.ended = False
@@ -1111,21 +1110,29 @@ class C2FSB(QProcess):
     def terminate(self):
         self.log_stat('terminate')
         if self.state_code != QProcess.ProcessState.NotRunning:
-            QgsMessageLog.logMessage(f"QProcess terminating, state: {ProcessState[process_code]}", MSGCAT, Qgis.Warning)
-            self.terminate()
+            super().terminate()
+            qlog('Terminate signal sent!', level=Qgis.Success)
         else:
-            QgsMessageLog.logMessage(f"QProcess can't terminate, state: {ProcessState[process_code]}", MSGCAT, Qgis.Info)
+            qlog(f"Can't send terminate signal! current state:{ProcessState.get(self.state_code,'!Unknown')}, ended{self.ended}", level=Qgis.Warning)
 
     def on_finished(self):
         self.ended = True
         self.log_stat('on_finished')
+        ok=False
         if self.exit_code == QProcess.NormalExit:
             level = Qgis.Success
             msg = ''
+            ok=True
         elif self.exit_code == QProcess.CrashExit:
+            level = Qgis.Warning
+            msg = f', error:{ProcessError.get(self.error_code,"!Unknown")}'
+        else:
             level = Qgis.Critical
-            msg = 'error code {ProcessError[self.error_code]}'
-        qlog(f'on_finished w/exitCode:{ExitStatus[self.exit_code]} {msg}',level=level)
+            msg = f', code:{self.exit_code}'
+            msg += f', error:{ProcessError.get(self.error_code,"!Unknown")}'
+        qlog(f'on_finished w/status:{ExitStatus.get(self.exit_code,"!Unknown")}{msg}',level=level)
+        if ok and self.after:
+            self.after()
 
     def read_standard_output(self):
         data = self.readAllStandardOutput()
@@ -1138,7 +1145,7 @@ class C2FSB(QProcess):
         self.append_message('===! standard error ouput !===\n'+stderr)
 
     def on_state_changed(self, state):
-        msg = ProcessState[state]
+        msg = ProcessState.get(state,"!Unknown")
         self.append_message(f'== process state changed : {msg}')
         self.log_stat('on_state_changed')
 
