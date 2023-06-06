@@ -23,49 +23,49 @@
         <stdDevFactor>2</stdDevFactor>
       </minMaxOrigin>
       <colorPalette>
-        <paletteEntry alpha="255" color="#d1ff73" value="101" label="101"/>
-        <paletteEntry alpha="255" color="#d1ff73" value="102" label="102"/>
-        <paletteEntry alpha="255" color="#226633" value="103" label="103"/>
-        <paletteEntry alpha="255" color="#83c795" value="104" label="104"/>
-        <paletteEntry alpha="255" color="#70a800" value="105" label="105"/>
-        <paletteEntry alpha="255" color="#dfb8e6" value="106" label="106"/>
-        <paletteEntry alpha="255" color="#ac66ed" value="107" label="107"/>
-        <paletteEntry alpha="255" color="#700cf2" value="108" label="108"/>
-        <paletteEntry alpha="255" color="#c4bd97" value="121" label="121"/>
-        <paletteEntry alpha="255" color="#897044" value="122" label="122"/>
-        <paletteEntry alpha="255" color="#c4bd97" value="123" label="123"/>
-        <paletteEntry alpha="255" color="#fbbeb9" value="124" label="124"/>
-        <paletteEntry alpha="255" color="#f768a1" value="142" label="142"/>
-        <paletteEntry alpha="255" color="#ae017e" value="143" label="143"/>
-        <paletteEntry alpha="255" color="#ffffbe" value="144" label="144"/>
-        <paletteEntry alpha="255" color="#e6e600" value="145" label="145"/>
-        <paletteEntry alpha="255" color="#ffd37f" value="146" label="146"/>
-        <paletteEntry alpha="255" color="#ffaa00" value="147" label="147"/>
-        <paletteEntry alpha="255" color="#ffd37f" value="148" label="148"/>
-        <paletteEntry alpha="255" color="#630000" value="149" label="149"/>
-        <paletteEntry alpha="255" color="#630000" value="161" label="161"/>
-        <paletteEntry alpha="255" color="#630000" value="162" label="162"/>
-        <paletteEntry alpha="255" color="#630000" value="163" label="163"/>
-        <paletteEntry alpha="255" color="#630000" value="164" label="164"/>
-        <paletteEntry alpha="255" color="#630000" value="165" label="165"/>
-        <paletteEntry alpha="255" color="#630000" value="181" label="181"/>
-        <paletteEntry alpha="255" color="#630000" value="182" label="182"/>
-        <paletteEntry alpha="255" color="#630000" value="183" label="183"/>
-        <paletteEntry alpha="255" color="#630000" value="185" label="185"/>
-        <paletteEntry alpha="255" color="#630000" value="186" label="186"/>
-        <paletteEntry alpha="255" color="#ffd37f" value="188" label="188"/>
-        <paletteEntry alpha="255" color="#ffd37f" value="189" label="189"/>
-        <paletteEntry alpha="255" color="#ffffff" value="0" label="0"/>
-        <paletteEntry alpha="255" color="#828282" value="91" label="91"/>
-        <paletteEntry alpha="255" color="#73dfff" value="92" label="92"/>
-        <paletteEntry alpha="255" color="#000000" value="93" label="93"/>
-        <paletteEntry alpha="255" color="#a6a6a6" value="98" label="98"/>
-        <paletteEntry alpha="255" color="#cccccc" value="99" label="99"/>
+        <paletteEntry color="#ffffff" label="NA" alpha="0" value="0"/>
+        <paletteEntry color="#828282" label="NB1" alpha="255" value="91"/>
+        <paletteEntry color="#ffffff" label="NB2" alpha="255" value="92"/>
+        <paletteEntry color="#d5cdb4" label="NB3" alpha="255" value="93"/>
+        <paletteEntry color="#3f88db" label="NB8" alpha="255" value="98"/>
+        <paletteEntry color="#dedcd0" label="NB9" alpha="255" value="99"/>
+        <paletteEntry color="#cfe3be" label="GR1" alpha="255" value="101"/>
+        <paletteEntry color="#cfe3be" label="GR2" alpha="255" value="102"/>
+        <paletteEntry color="#cfe3be" label="GR3" alpha="255" value="103"/>
+        <paletteEntry color="#cfe3be" label="GR4" alpha="255" value="104"/>
+        <paletteEntry color="#a4cd89" label="GR5" alpha="255" value="105"/>
+        <paletteEntry color="#a4cd89" label="GR6" alpha="255" value="106"/>
+        <paletteEntry color="#a4cd89" label="GR7" alpha="255" value="107"/>
+        <paletteEntry color="#a4cd89" label="GR8" alpha="255" value="108"/>
+        <paletteEntry color="#9ac76a" label="GS1" alpha="255" value="121"/>
+        <paletteEntry color="#9ac76a" label="GS2" alpha="255" value="122"/>
+        <paletteEntry color="#9ac76a" label="GS3" alpha="255" value="123"/>
+        <paletteEntry color="#9ac76a" label="GS4" alpha="255" value="124"/>
+        <paletteEntry color="#708137" label="SH2" alpha="255" value="142"/>
+        <paletteEntry color="#708137" label="SH3" alpha="255" value="143"/>
+        <paletteEntry color="#708137" label="SH4" alpha="255" value="144"/>
+        <paletteEntry color="#708137" label="SH5" alpha="255" value="145"/>
+        <paletteEntry color="#49521d" label="SH6" alpha="255" value="146"/>
+        <paletteEntry color="#49521d" label="SH7" alpha="255" value="147"/>
+        <paletteEntry color="#49521d" label="SH8" alpha="255" value="148"/>
+        <paletteEntry color="#49521d" label="SH9" alpha="255" value="149"/>
+        <paletteEntry color="#b87333" label="TU1" alpha="255" value="161"/>
+        <paletteEntry color="#b87333" label="TU2" alpha="255" value="162"/>
+        <paletteEntry color="#8c5627" label="TU3" alpha="255" value="163"/>
+        <paletteEntry color="#7e4e23" label="TU4" alpha="255" value="164"/>
+        <paletteEntry color="#7e4e23" label="TU5" alpha="255" value="165"/>
+        <paletteEntry color="#4b391d" label="TL1" alpha="255" value="181"/>
+        <paletteEntry color="#4b391d" label="TL2" alpha="255" value="182"/>
+        <paletteEntry color="#4b391d" label="TL3" alpha="255" value="183"/>
+        <paletteEntry color="#4b391d" label="TL5" alpha="255" value="185"/>
+        <paletteEntry color="#372c19" label="TL6" alpha="255" value="186"/>
+        <paletteEntry color="#372c19" label="TL8" alpha="255" value="188"/>
+        <paletteEntry color="#372c19" label="TL9" alpha="255" value="189"/>
       </colorPalette>
       <colorramp type="randomcolors" name="[source]"/>
     </rasterrenderer>
-    <brightnesscontrast contrast="0" brightness="0"/>
-    <huesaturation colorizeRed="255" colorizeOn="0" grayscaleMode="0" saturation="0" colorizeStrength="100" colorizeBlue="128" colorizeGreen="128"/>
+    <brightnesscontrast contrast="0" brightness="0" gamma="1"/>
+    <huesaturation colorizeBlue="128" saturation="0" colorizeGreen="128" colorizeStrength="100" grayscaleMode="0" invertColors="0" colorizeRed="255" colorizeOn="0"/>
     <rasterresampler maxOversampling="2"/>
   </pipe>
   <blendMode>0</blendMode>
