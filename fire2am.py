@@ -835,7 +835,7 @@ class fire2amClass:
         self.extent = layer.extent()
 
     def run_normal(self):
-        ''' run simulation '''
+        ''' run normal simulation '''
         self.dlg.updateState()
         self.updateProject()
         if not self.checkMap():
@@ -847,6 +847,7 @@ class fire2amClass:
         self.simulation_process.start( cmd)
 
     def run_dev(self):
+        ''' run dev simulation does not get dialog params '''
         if self.first_start_argparse:
             log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
             return
@@ -899,13 +900,6 @@ class fire2amClass:
         if not self.args['OutFolder'].is_dir():
             log('results folder',self.args['OutFolder'], pre='Does NOT exist', msgBar=self.dlg.msgBar, level=3)
             return
-        '''
-        # get args
-        if 'nsims' in self.args.keys():
-            nsims = self.args['nsims']
-        else:
-            nsims = self.default_args['nsims']
-        '''
         # logFile for: ignition points
         baseLayer = self.dlg.state['layerComboBox_fuels']
         if Path(self.args['OutFolder'], 'LogFile.txt').is_file():
@@ -914,7 +908,6 @@ class fire2amClass:
                 logText = afile.read().decode()
             ''' print into run text area '''
             self.simulation_process.append_message( logText)
-            #self.externalProcess_message( logText)
             ''' process logfile '''
             layerName = 'Ignition_Points'
             out_gpkg = Path( self.args['OutFolder'], layerName+'.gpkg')
@@ -984,21 +977,17 @@ class fire2amClass:
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+styleName))
 
     def slot_run_after(self):
-        ''' this connects to the unnamed button on the run tab
-            is mainly for live debugging stuff
-            pressing the unnamed button next to kill, terminate, dev
-            git show -s --format=%H
-            git sha              : $Format:%H$
+        ''' TODO test
+            processes an output folder
+            may delete you files! backup first
         '''
         self.dlg.updateState()
         self.updateProject()
-        self.checkMap()
-        self.makeArgs()
-        self.writeInstance()
-        cmd = self.proc_exe +' '+ self.gen_cmd
-        qlog(f'cmd {cmd}')
-        #self.simulation_process = C2FSB( proc_dir=self.proc_dir, plainTextEdit=self.dlg.plainTextEdit)
-        self.simulation_process.start( cmd)
+        header, arg_str, gen_args, workdir = self.argdlg.get()
+        self.proc_dir = self.argdlg.fileWidget_directory.filePath()
+        log('header, arg_str, gen_args, workdir',header, arg_str, gen_args, workdir, level=3)
+        self.args.update(self.argdlg.gen_args)
+        self.after()
 
 
 #exitCode()
