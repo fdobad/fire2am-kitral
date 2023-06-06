@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>7</number>
+      <number>3</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -519,9 +519,9 @@ for (normal distribution)
         </spacer>
        </item>
        <item row="1" column="5">
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="pushButton_run_after">
          <property name="text">
-          <string/>
+          <string>after(dev )</string>
          </property>
         </widget>
        </item>
@@ -555,9 +555,9 @@ for (normal distribution)
         </widget>
        </item>
        <item row="1" column="4">
-        <widget class="QPushButton" name="pushButton_dev">
+        <widget class="QPushButton" name="pushButton_run_dev">
          <property name="text">
-          <string>[dev]</string>
+          <string>run(dev)</string>
          </property>
         </widget>
        </item>
