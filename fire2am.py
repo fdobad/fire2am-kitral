@@ -23,7 +23,7 @@
  ***************************************************************************/
 
 TODO:
-    run_All with empty weather folder stop!
+    run_normal with empty weather folder stop!
 
 1. fire2amClass __init__ : registers launch buttons on toolbar
 
@@ -39,7 +39,7 @@ TODO:
 
 2.2 else listen to ui signals
 
-3. run_All : executes the simulation
+3. run_normal : executes the simulation
         dlg.updateState() : get all ui parameters updated to dlg.state dictionary
         updateProject() :
             get global params (fuel layer W,H,extent,crs)
@@ -424,7 +424,7 @@ class fire2amClass:
         ''' main '''
         #self.dlg.tabWidget.currentChanged.connect(self.slot_tabWidget_currentChanged)
         self.dlg.pushButton_restoreDefaults.pressed.connect(self.slot_restoreDefaults)
-        self.dlg.pushButton_run.pressed.connect(self.run_All)
+        self.dlg.pushButton_run.pressed.connect(self.run_normal)
         ''' tab landscape '''
         self.dlg.layerComboBox_fuels.layerChanged.connect( self.slot_trySelectFuelRaster)
         self.dlg.layerComboBox_elevation.layerChanged.connect( self.slot_trySelectRaster)
@@ -443,12 +443,10 @@ class fire2amClass:
         self.dlg.radioButton_weatherFile.clicked.connect( self.slot_radioButton_weatherFile_clicked)
         self.dlg.radioButton_weatherFolder.clicked.connect( self.slot_radioButton_weatherFolder_clicked)
         ''' tab run '''
-        #self.dlg.pushButton_dev.pressed.connect(self.externalProcess_start_dev)
-        #self.dlg.pushButton_kill.pressed.connect(self.externalProcess_kill)
+        self.dlg.pushButton_run_dev.pressed.connect(self.run_dev)
         self.dlg.pushButton_kill.pressed.connect(self.simulation_process.kill)
-        #self.dlg.pushButton_terminate.pressed.connect(self.externalProcess_terminate)
         self.dlg.pushButton_terminate.pressed.connect(self.simulation_process.terminate)
-        self.dlg.pushButton.pressed.connect(self.slot_doit)
+        self.dlg.pushButton_run_after.pressed.connect(self.slot_run_after)
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
@@ -836,7 +834,7 @@ class fire2amClass:
         self.H = layer.height()
         self.extent = layer.extent()
 
-    def run_All(self):
+    def run_normal(self):
         ''' run simulation '''
         self.dlg.updateState()
         self.updateProject()
@@ -847,94 +845,48 @@ class fire2amClass:
         cmd = self.proc_exe +' '+ self.gen_cmd
         qlog(f'cmd {cmd}')
         self.simulation_process.start( cmd)
-        #self.externalProcess_start()
 
-    #def externalProcess_message(self, s):
-    #    self.dlg.plainTextEdit.appendPlainText(s)
+    def run_dev(self):
+        if self.first_start_argparse:
+            log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
+            return
+        if not self.simulation_process.ended:
+            if self.simulation_process.state_code == QProcess.ProcessState.Running or\
+               self.simulation_process.state_code == QProcess.ProcessState.Starting:
+                qlog("Can't start simulation, process already running")
+                return
 
-    #def externalProcess_kill(self):
-    #    if self.proc:
-    #        self.externalProcess_message('Killing run process with state: '+self.name_state[self.proc.state()])
-    #        self.proc.kill()
-    #        return
-    #    log('Nothing to kill', pre='Run process', level=1, msgBar=self.dlg.msgBar)
+        self.dlg.updateState()
+        self.updateProject()
+        self.checkMap()
+        header, arg_str, gen_args, workdir = self.argdlg.get()
+        self.proc_dir = self.argdlg.fileWidget_directory.filePath()
+        log('header, arg_str, gen_args, workdir',header, arg_str, gen_args, workdir, level=3)
 
-    #def externalProcess_terminate(self):
-    #    if self.proc:
-    #        self.externalProcess_message('Terminating run process with state: '+self.name_state[self.proc.state()])
-    #        self.proc.terminate()
-    #        return
-    #    log('Nothing to terminate', pre='Run process', level=1, msgBar=self.dlg.msgBar)
+        ''' did opened '''
+        self.args.update(self.argdlg.gen_args)
+        ''' but didnt mention inFolder '''
+        if 'InFolder' not in self.argdlg.gen_args:
+            qlog('InFolder not in argdialog! Run normal instead!', level=Qgis.Warning)
+            return
+        elif not Path( self.args['InFolder']).is_dir():
+            qlog('InFolder does not exists! Run normal instead!', level=Qgis.Warning)
+            return
+        else:
+            self.args['InFolder'] = Path( self.args['InFolder'])
+        ''' but didnt mention outFolder '''
+        if 'OutFolder' not in self.argdlg.gen_args:
+            self.args['OutFolder'] = Path( self.args['InFolder'], 'results')
+            arg_str += ' --output-folder '+str(self.args['OutFolder'])
+        else:
+            self.args['OutFolder'] = Path( self.args['OutFolder'])
+        if not self.args['OutFolder'].is_dir():
+            self.args['OutFolder'].mkdir()
 
-    #def externalProcess_start(self):
-    #    if self.proc is None:
-    #        self.externalProcess_message('Starting run process '+self.gen_cmd)
-    #        log('Starting run process '+self.gen_cmd,level=0)
-    #        self.proc = QProcess()
-    #        self.proc.setInputChannelMode(QProcess.ForwardedInputChannel)
-    #        self.proc.setProcessChannelMode( QProcess.SeparateChannels)
-    #        self.proc.readyReadStandardOutput.connect(self.externalProcess_handle_stdout)
-    #        self.proc.readyReadStandardError.connect(self.externalProcess_handle_stderr)
-    #        self.proc.stateChanged.connect(self.externalProcess_handle_state)
-    #        self.proc.finished.connect(self.externalProcess_finished)  # Clean up once complete.
-    #        self.proc.setWorkingDirectory( self.proc_dir)
-    #        self.externalProcess_message('workdir %s'%self.proc_dir)
-    #        ar = shlex_split( self.proc_exe +' '+ self.gen_cmd , posix="win" not in sys.platform )
-    #        self.externalProcess_message('args %s'%ar)
-    #        log( 'ar', *ar, level=0)
-    #        self.proc.start( ar[0], ar[1:] )
-    #        self.externalProcess_message('Started')
-    #        log('Started',level=0)
-    #        ''' debug basic
-    #        self.proc.setWorkingDirectory( os.path.join( self.plugin_dir, 'extras'))
-    #        self.proc.start("python3", ['dummy_proc.py'])
-    #        '''
-
-    #def externalProcess_start_dev(self):
-    #    if self.first_start_argparse:
-    #        log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
-    #        return
-    #    if self.proc:
-    #        log('Process is running', pre="Can't run dev mode", level=2)
-    #        return
-
-    #    self.dlg.updateState()
-    #    self.updateProject()
-    #    self.checkMap()
-    #    header, arg_str, gen_args, workdir = self.argdlg.get()
-    #    self.args['OutFolder'] = Path(gen_args['OutFolder'])
-
-    #    self.proc = QProcess()
-    #    self.proc.setInputChannelMode( QProcess.ForwardedInputChannel)
-    #    self.proc.setProcessChannelMode( QProcess.SeparateChannels)
-    #    self.proc.readyReadStandardOutput.connect( self.externalProcess_handle_stdout)
-    #    self.proc.readyReadStandardError.connect( self.externalProcess_handle_stderr)
-    #    self.proc.stateChanged.connect( self.externalProcess_handle_state)
-    #    self.proc.finished.connect( self.externalProcess_finished)
-
-    #    log('Starting DEV run'+arg_str,level=0)
-    #    self.proc.setWorkingDirectory( workdir)
-    #    ar = shlex_split( header + ' ' + arg_str )
-    #    self.proc.start( ar[0], ar[1:] )
-    #    self.externalProcess_message('Started DEV run:\n\t%s\n\t%s'%(workdir,ar))
-
-    #def externalProcess_handle_stderr(self):
-    #    data = self.proc.readAllStandardError()
-    #    stderr = bytes(data).decode("utf8")
-    #    self.externalProcess_message('!@#$%^&* stdError stream:\n'+stderr)
-
-    #def externalProcess_handle_stdout(self):
-    #    data = self.proc.readAllStandardOutput()
-    #    stdout = bytes(data).decode("utf8")
-    #    self.externalProcess_message(stdout)
-
-    #def externalProcess_handle_state(self, state):
-    #    self.externalProcess_message('State changed: '+self.name_state[state])
-
-    #def externalProcess_finished(self):
-    #    self.externalProcess_message("Process finished.")
-    #    self.proc = None
-    #    self.after()
+        log('Starting DEV run'+arg_str,level=0)
+        cmd = header + ' ' + arg_str
+        self.simulation_process.start( cmd, proc_dir = workdir)
+        self.simulation_process.append_message('Started DEV run:\n\t%s\n\t%s'%(workdir,cmd))
 
     def after(self):
         ''' After the simulation, check if then do:
@@ -1031,7 +983,7 @@ class fire2amClass:
         vectorLayer = self.iface.addVectorLayer( str(geopackage)+'|layername='+layerName, layerName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+styleName))
 
-    def slot_doit(self):
+    def slot_run_after(self):
         ''' this connects to the unnamed button on the run tab
             is mainly for live debugging stuff
             pressing the unnamed button next to kill, terminate, dev
