@@ -164,7 +164,6 @@ class fire2amClass:
         else:
             if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire').is_file():
                 qlog('NO BINARY FOUND!')
-                return
             else:
                 os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
 
@@ -981,12 +980,21 @@ class fire2amClass:
             processes an output folder
             may delete you files! backup first
         '''
+        if self.first_start_argparse:
+            log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
+            return
+        if not self.simulation_process.ended:
+            if self.simulation_process.state_code == QProcess.ProcessState.Running or\
+               self.simulation_process.state_code == QProcess.ProcessState.Starting:
+                qlog("Can't start simulation, process already running")
+                return
         self.dlg.updateState()
         self.updateProject()
         header, arg_str, gen_args, workdir = self.argdlg.get()
         self.proc_dir = self.argdlg.fileWidget_directory.filePath()
         log('header, arg_str, gen_args, workdir',header, arg_str, gen_args, workdir, level=3)
         self.args.update(self.argdlg.gen_args)
+        self.args['OutFolder'] = Path(self.args['OutFolder'])
         self.after()
 
 
