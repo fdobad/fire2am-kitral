@@ -72,7 +72,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
         hlayout.addWidget( self.label_header)
         # textEdit_header 
         self.textEdit_header = QtWidgets.QTextEdit('python3 main.py ')
-        self.textEdit_header.setMaximumHeight(1.1*fm.height())
+        self.textEdit_header.setMaximumHeight(2*fm.height())
         self.textEdit_header.setVisible(False)
         hlayout.addWidget( self.textEdit_header)
         # label_directory

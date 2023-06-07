@@ -979,6 +979,14 @@ class fire2amClass:
             processes an output folder
             may delete you files! backup first
         '''
+        if self.first_start_argparse:
+            log('dev dialog has never been opened (not created)', pre="Can't run dev mode", level=2)
+            return
+        if not self.simulation_process.ended:
+            if self.simulation_process.state_code == QProcess.ProcessState.Running or\
+               self.simulation_process.state_code == QProcess.ProcessState.Starting:
+                qlog("Can't start simulation, process already running")
+                return
         self.dlg.updateState()
         self.updateProject()
         header, arg_str, gen_args, workdir = self.argdlg.get()
