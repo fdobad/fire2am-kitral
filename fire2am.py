@@ -159,12 +159,10 @@ class fire2amClass:
         # check if binaries exists
         if plt_sys()=='Windows':
             if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire.exe').is_file():
-                qlog('NO BINARY FOUND!')
-                return
+                self.iface.messageBar().pushMessage(f'{aName}:','NO BINARY FOUND! Cell2Fire.exe missing...', level=2, duration=2)
         else:
             if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire').is_file():
-                qlog('NO BINARY FOUND!')
-                return
+                self.iface.messageBar().pushMessage(f'{aName}:','NO BINARY FOUND! Cell2Fire missing...', level=2, duration=2)
             else:
                 os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
 
@@ -987,6 +985,7 @@ class fire2amClass:
         self.proc_dir = self.argdlg.fileWidget_directory.filePath()
         log('header, arg_str, gen_args, workdir',header, arg_str, gen_args, workdir, level=3)
         self.args.update(self.argdlg.gen_args)
+        self.args['OutFolder'] = Path(self.args['OutFolder'])
         self.after()
 
 
