@@ -156,16 +156,6 @@ class fire2amClass:
         self.actions = []
         self.menu = self.tr(u'&Fire Simulator Analytics Management')
 
-        # check if binaries exists
-        if plt_sys()=='Windows':
-            if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire.exe').is_file():
-                self.iface.messageBar().pushMessage(f'{aName}:','NO BINARY FOUND! Cell2Fire.exe missing...', level=2, duration=2)
-        else:
-            if not Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire').is_file():
-                self.iface.messageBar().pushMessage(f'{aName}:','NO BINARY FOUND! Cell2Fire missing...', level=2, duration=2)
-            else:
-                os.chmod(Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'), stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
-
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start_dialog = None
@@ -311,6 +301,22 @@ class fire2amClass:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    def check_binary(self):
+        """ check if binary exists """
+        ext = ''
+        if plt_sys()=='Windows':
+            ext = '.exe'
+        afile = Path(self.plugin_dir,'C2FSB','Cell2FireC','Cell2Fire'+ext)
+        if not afile.is_file():
+            self.iface.messageBar().pushMessage(f'{aName}:',f'Cell2Fire{ext} binary not found! will not simulate', level=2, duration=0)
+            self.dlg.msgBar.pushMessage(f'{aName}:',f'Cell2Fire{ext} binary not found! will not simulate', level=2, duration=0)
+            self.dlg.plainTextEdit.appendPlainText(f'Cell2Fire{ext} binary not found! {aName} will not simulate until the file placed at {afile}')
+            self.dlg.pushButton_run.setEnabled(False)
+            self.dlg.pushButton_run_dev.setEnabled(False)
+            return
+        if plt_sys()!='Windows':
+            os.chmod(afile, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
+
     def run_Argparse(self):
         """ Argparse dialog run method that performs all the real work"""
         if self.first_start_argparse == True:
@@ -335,6 +341,7 @@ class fire2amClass:
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.simulation_process = C2FSB( proc_dir=self.proc_dir, on_finished=self.after, plainTextEdit=self.dlg.plainTextEdit)
+            self.check_binary()
             self.connect_slots()
         # removed check if they are layers present
         #if QgsProject.instance().mapLayers() == {}:
