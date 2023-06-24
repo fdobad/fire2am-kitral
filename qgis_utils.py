@@ -87,7 +87,7 @@ def getVector( layer) -> namedtuple:
                         id = np.array(fid),
                         len = len(fid) )
 
-def writeVectorLayer( vectorLayer, layerName, geopackage):
+def writeVectorLayer( vectorLayer, layerName, geopackage, transformContext=None):
     ''' TODO warning writeAsVectorFormat deprecated '''
     options = QgsVectorFileWriter.SaveVectorOptions()
     options.driverName = 'GPKG'
@@ -96,7 +96,15 @@ def writeVectorLayer( vectorLayer, layerName, geopackage):
         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
     else:
         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-    return QgsVectorFileWriter.writeAsVectorFormat( vectorLayer , str(geopackage), options)
+    if transformContext:
+        return QgsVectorFileWriter.writeAsVectorFormatV3(layer=vectorLayer,
+                                                         fileName=str(geopackage),
+                                                         transformContext=vectorLayer.transformContext(),
+                                                         options=options)
+    else:
+        return QgsVectorFileWriter.writeAsVectorFormat(layer=vectorLayer,
+                                                       fileName=str(geopackage),
+                                                       options=options)
 
 def mergeVectorLayers(layerList, ogrDB, tableName):
     ''' Has no output because writes into database
@@ -123,7 +131,7 @@ def rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue, minColor=(68,
     layer.setRenderer(renderer)
     layer.triggerRepaint()
 
-def raster2polygon( layerName, geopackage):
+def raster2polygon(layerName : str, geopackage : str) -> None:
     ''' loads a raster layer writes it as vector layer into geopackages
         raster is named "r"+layerName
         vector is named "v"+layerName
@@ -147,7 +155,10 @@ def raster2polygon( layerName, geopackage):
         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
     else:
         options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-    QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, geopackage, options)
+    QgsVectorFileWriter.writeAsVectorFormatV3(layer=vectorLayer,
+                                              fileName=geopackage,
+                                              transformContext=rasterLayer.transformContext(),
+                                              options=options)
     os.remove(tmp)
     del rasterLayer, vectorLayer, options, tmp
 

@@ -28,10 +28,10 @@ from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer)
 
-MESSAGE_CATEGORY = 'Background_'+aName
+MESSAGE_CATEGORY = aName+'_background'
 
 class after_ForestGrid(QgsTask):
-    '''
+    """
     TODO: replace polygons timestamp with Weather datetime
 
     prerequisite : results/Grids exists
@@ -61,7 +61,7 @@ class after_ForestGrid(QgsTask):
                         merge polygonS
                 onfinished:
                     load & style merged
-    '''
+    """
     def __init__(self, description, layerName, iface, dlg, args, extent, crs, plugin_dir):
         super().__init__(description, QgsTask.CanCancel)
         self.exception = None
@@ -98,6 +98,9 @@ class after_ForestGrid(QgsTask):
         self.now = datetime(2023, 1, 1, 0, 0)
         self.dt = []
         self.sim_dt = []
+        self.df = None
+        self.tasklist_FE = []
+        self.tasklist_FS = []
 
     def run(self):
         QgsMessageLog.logMessage(self.description()+' bg Started',MESSAGE_CATEGORY, Qgis.Info)
@@ -181,19 +184,24 @@ class after_ForestGrid(QgsTask):
             ''' sub meanFireScar '''
             self.subTask['meanFireScar'] = QgsTask.fromFunction(self.description()+' mean calculation', self.sub_meanFireScar, on_finished=after_ForestGrid_meanFireScar_finished)
             QgsApplication.taskManager().addTask( self.subTask['meanFireScar'])
-            ''' sub for each sim FireEvolution '''
+            ''' accum sub for each sim FireEvolution or simply Store '''
             for s,t,z,nu,fi,ii,dt in zip(self.sim_num, self.sim_totals, self.sim_zeros, self.sim_nu, self.sim_fi, self.sim_idx, self.sim_dt):
                 tg = t - np.sum(z) # total good != 0 data
                 if tg>1:
                     mergedName = 'FireEvolution_'+str(s).zfill(self.width1stNum)
-                    self.subTask[mergedName] = QgsTask.fromFunction(self.description()+' FireEvolution simulation %s'%s, self.sub_FireEvolution, s, tg, ii, nu, dt, mergedName, on_finished=after_ForestGrid_FireEvolution_finished)
-                    QgsApplication.taskManager().addTask( self.subTask[mergedName])
+                    self.tasklist_FE += [QgsTask.fromFunction(self.description()+' FireEvolution simulation %s'%s, self.sub_FireEvolution, s, tg, ii, nu, dt, mergedName, on_finished=after_ForestGrid_FireEvolution_finished)]
                 elif tg==1:
                     name = 'FireSim_'+str(s).zfill(self.width1stNum)
-                    self.subTask[name] = QgsTask.fromFunction(self.description()+' simulation %s store'%s, self.sub_StoreFireSim, s, tg, ii, nu, on_finished=after_ForestGrid_StoreFireSim_finished)
-                    #TODO move after the for loop, concatenate
-                    QgsApplication.taskManager().addTask( self.subTask[name])
-
+                    self.tasklist_FS += [QgsTask.fromFunction(self.description()+' simulation %s store'%s, self.sub_StoreFireSim, s, tg, ii, nu, on_finished=after_ForestGrid_StoreFireSim_finished)]
+            ''' execute chained '''
+            if self.tasklist_FE != []:
+                for i in range(len(self.tasklist_FE)-1):
+                    self.tasklist_FE[i].addSubTask(self.tasklist_FE[i+1], [], QgsTask.ParentDependsOnSubTask)
+                QgsApplication.taskManager().addTask(self.tasklist_FE[0])
+            if self.tasklist_FS != []:
+                for i in range(len(self.tasklist_FS)-1):
+                    self.tasklist_FS[i].addSubTask(self.tasklist_FS[i+1], [], QgsTask.ParentDependsOnSubTask)
+                QgsApplication.taskManager().addTask(self.tasklist_FS[0])
         else:
             if self.exception is None:
                 QgsMessageLog.logMessage(self.description()+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
@@ -232,7 +240,13 @@ class after_ForestGrid(QgsTask):
                 if task.isCanceled():
                     QgsMessageLog.logMessage(task.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                     return {'result':False}
-        return {'result':True, 'description':task.description()}
+                # new df
+                describe_result = stats.describe(self.data[i], axis=None)
+                df = DataFrame(describe_result, index=describe_result._fields).T
+                df['burned'] = self.data[i].sum()
+                df.rename({0:f's{nsim}_p{ngrid}'},inplace=True)
+                self.df = concat((self.df,df))
+        return {'result':True, 'description':task.description(), 'df':self.df, 'dlg':self.dlg}
 
     def sub_FireEvolution(self, task, s, tg, ii, nu, dt, mergedName):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -249,6 +263,12 @@ class after_ForestGrid(QgsTask):
                 if task.isCanceled():
                     QgsMessageLog.logMessage(task.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                     return {'result':False}
+                # new df
+                describe_result = stats.describe(self.data[i], axis=None)
+                df = DataFrame(describe_result, index=describe_result._fields).T
+                df['burned'] = self.data[i].sum()
+                df.rename({0:f's{nsim}_p{ngrid}'},inplace=True)
+                self.df = concat((self.df,df))
         if tg > 1:
             #QgsMessageLog.logMessage(task.description()+' tg>1 1', MESSAGE_CATEGORY, Qgis.Info)
             polys=[ str(self.vout_gpkg)+'|layername='+self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum) \
@@ -258,7 +278,7 @@ class after_ForestGrid(QgsTask):
             mergeVectorLayers( polys, str(self.evout_gpkg), mergedName )
             #QgsMessageLog.logMessage(task.description()+' tg>1 2', MESSAGE_CATEGORY, Qgis.Info)
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
-        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'vout_gpkg':self.evout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
+        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'df':self.df, 'vout_gpkg':self.evout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
 
 def after_ForestGrid_meanFireScar_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
@@ -271,10 +291,13 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            bf = result['dlg'].statdf
-            df = concat([bf,result['df']], axis=1)
-            result['dlg'].statdf = df
-            result['dlg'].tableView_1.setModel(result['dlg'].PandasModel(df))
+            # add to table
+            result['dlg'].add_table('MeanFireScar[px]')
+            result['dlg'].add_data('MeanFireScar[px]', result['df'])
+            #bf = result['dlg'].statdf
+            #df = concat([bf,result['df']], axis=1)
+            #result['dlg'].statsdf = df
+            #result['dlg'].stats.setModel(result['dlg'].PandasModel(df))
             QgsMessageLog.logMessage(result['description']+f' done ui update {type(result["dlg"])} {type(result["iface"])}', MESSAGE_CATEGORY, Qgis.Info)
     else:
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
@@ -288,12 +311,16 @@ def after_ForestGrid_StoreFireSim_finished(exception, result):
             QgsMessageLog.logMessage(result['description']+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
         else:
             QgsMessageLog.logMessage(result['description']+' Finished w/result %s'%result['result'], MESSAGE_CATEGORY, Qgis.Info)
+            if 'FireScar[px]' not in result['dlg'].tables:
+                result['dlg'].add_table('FireScar[px]')
+            result['dlg'].add_data('FireScar[px]',result['df'])
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
 
 def after_ForestGrid_FireEvolution_finished(exception, result):
+    # TODO add table with evolution & graph
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
     if exception is None:
         if result is None:
@@ -303,6 +330,9 @@ def after_ForestGrid_FireEvolution_finished(exception, result):
             vectorLayer = result['iface'].addVectorLayer( str(result['vout_gpkg'])+'|layername='+result['mergedName'], result['mergedName'], 'ogr')
             vectorLayer.loadNamedStyle( os_path_join( result['plugin_dir'], 'img'+sep+'Fire_Evolution_layerStyle.qml'))
             QgsMessageLog.logMessage(result['description']+' fg ui updated', MESSAGE_CATEGORY, Qgis.Info)
+            if 'FireScar[px]' not in result['dlg'].tables:
+                result['dlg'].add_table('FireScar[px]')
+            result['dlg'].add_data('FireScar[px]',result['df'])
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
@@ -387,8 +417,8 @@ class after_asciiDir(QgsTask):
             # get current table add column, store, reset
             bf = self.dlg.statdf
             df = concat([bf,df], axis=1)
-            self.dlg.statdf = df
-            self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+            self.dlg.statsdf = df
+            self.dlg.stats.setModel(self.dlg.PandasModel(df))
             #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
             # write all rasters to gpkg in subtask
             if self.nsim > 1:
@@ -544,22 +574,20 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
         f.setId(s)
         feats += [ f]
         task.setProgress(c/npts*80)
+        QgsMessageLog.logMessage(task.description()+f' px:{ignitionCell-1} -> x:{x},y:{y}', MESSAGE_CATEGORY, Qgis.Info)
+        c+=1
         if task.isCanceled():
             raise Exception('canceled')
-        c+=1
-    QgsMessageLog.logMessage(task.description()+' added feature points', MESSAGE_CATEGORY, Qgis.Info)
     ''' create vector layer '''
     vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
     vectorLayer.setCrs( baseLayer.crs())
     ret, val = vectorLayer.dataProvider().addFeatures(feats)
     if not ret:
         raise Exception(task.description()+' exception creating vector layer in memory adding features '+str(val))
-    QgsMessageLog.logMessage(task.description()+' created vector layer in memory, added features', MESSAGE_CATEGORY, Qgis.Info)
     task.setProgress(90)
     ret, val = writeVectorLayer( vectorLayer, layerName, out_gpkg)
     if ret != 0:
-        raise Exception(task.description()+' exception written to geopackage '+str(val))
-    QgsMessageLog.logMessage(task.description()+' wrote geopackage', MESSAGE_CATEGORY, Qgis.Info)
+        raise Exception(task.description()+' exception writing to geopackage '+str(val))
     task.setProgress(100)
     QgsMessageLog.logMessage(task.description()+' Ended', MESSAGE_CATEGORY, Qgis.Info)
 
@@ -659,8 +687,8 @@ class after_betweenness_centrality(QgsTask):
             # get current table add column, store, reset
             bf = self.dlg.statdf
             df = concat([bf,df], axis=1)
-            self.dlg.statdf = df
-            self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+            self.dlg.statsdf = df
+            self.dlg.stats.setModel(self.dlg.PandasModel(df))
             #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
             # write all rasters to gpkg in subtask
             if self.nsim > 1:
@@ -752,8 +780,8 @@ class after_downstream_protection_value(QgsTask):
             # get current table add column, store, reset
             bf = self.dlg.statdf
             df = concat([bf,df], axis=1)
-            self.dlg.statdf = df
-            self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+            self.dlg.statsdf = df
+            self.dlg.stats.setModel(self.dlg.PandasModel(df))
             #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
             # write all rasters to gpkg in subtask
             if self.nsim > 1:

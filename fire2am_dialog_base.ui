@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>762</width>
-    <height>618</height>
+    <width>654</width>
+    <height>579</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>3</number>
+      <number>5</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -500,7 +500,7 @@ for (normal distribution)
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_2">
+     <widget class="QWidget" name="tab_run">
       <attribute name="title">
        <string>Run</string>
       </attribute>
@@ -563,7 +563,7 @@ for (normal distribution)
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_results">
+     <widget class="QWidget" name="tab_tables">
       <attribute name="title">
        <string>Tables</string>
       </attribute>
@@ -572,7 +572,7 @@ for (normal distribution)
         <enum>QLayout::SetDefaultConstraint</enum>
        </property>
        <item row="0" column="0" rowspan="2">
-        <widget class="QTabWidget" name="tabWidget_2">
+        <widget class="QTabWidget" name="tabWidget_tables">
          <property name="sizePolicy">
           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -597,24 +597,7 @@ for (normal distribution)
           </attribute>
           <layout class="QGridLayout" name="gridLayout_6">
            <item row="0" column="0">
-            <widget class="QTableView" name="tableView_1"/>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="tab_4">
-          <attribute name="title">
-           <string>KPI</string>
-          </attribute>
-          <layout class="QGridLayout" name="gridLayout_7">
-           <item row="0" column="0">
-            <widget class="QTableView" name="tableView_2">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-               <horstretch>1</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
+            <widget class="QTableView" name="stats"/>
            </item>
           </layout>
          </widget>
@@ -940,6 +923,20 @@ Ask the fire2a team for access to the repo</string>
        <widget class="QPushButton" name="pushButton_run">
         <property name="text">
          <string>Run</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton">
+        <property name="text">
+         <string>PushButton</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButtonB">
+        <property name="text">
+         <string>PushButton</string>
         </property>
        </widget>
       </item>

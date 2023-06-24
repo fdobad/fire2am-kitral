@@ -422,8 +422,8 @@ class fire2amClass:
         ''' prepare stats table '''
         st = stats.describe([0,1])
         df = DataFrame( ('Name',*st._fields), index=('Name',*st._fields), columns=['Attributes'])
-        self.dlg.statdf = df
-        self.dlg.tableView_1.setModel(self.dlg.PandasModel(df))
+        self.dlg.statsdf = df
+        self.dlg.stats.setModel(self.dlg.PandasModel(df))
 
     def connect_slots(self):
         ''' main '''
@@ -455,6 +455,21 @@ class fire2amClass:
         ''' tab tables '''
         ''' tab graphs '''
         self.dlg.comboBox_plot.currentIndexChanged.connect( lambda index: self.dlg.plt.show(index))
+        self.dlg.pushButton.pressed.connect( self.tmp)
+        self.dlg.pushButtonB.pressed.connect( self.tmpB)
+
+    def tmp(self):
+        name = ''.join(map(chr,np.random.randint(97,123,4)))
+        self.dlg.add_table(name)
+        self.dlg.add_data(name,gen_df())
+
+    def tmpB(self, new, **kwargs):
+        if not new:
+            new = gen_df()
+        name = np.random.choice(list(self.dlg.tables.keys()))
+        old = self.dlg.df[name]
+        df = concat((old,new), kwargs)
+        self.dlg.add_data(name,df)
 
     def slot_radioButton_ignitionProbMap_clicked(self):
         """ When the raidioButton is selected, check if there's a layer Widget
@@ -1030,6 +1045,8 @@ class C2FSB(QProcess):
         self.stateChanged.connect( self.on_state_changed)
         if proc_dir:
             self.setWorkingDirectory( str(proc_dir))
+            self.proc_dir = proc_dir
+        self.proc_dir = None
         self.finished.connect( self.on_finished)
         self.after = on_finished
         self.plainTextEdit = plainTextEdit
@@ -1061,7 +1078,10 @@ class C2FSB(QProcess):
                 qlog("Can't start simulation, process already running")
                 return
         if proc_dir:
-            self.setWorkingDirectory( proc_dir)
+            self.setWorkingDirectory( str(proc_dir))
+            self.proc_dir = proc_dir
+        self.append_message(f'== process working directory {self.proc_dir}')
+        self.append_message(f'== process command {cmd}')
         super().start(cmd)
         self.started = True
         self.ended = False
@@ -1119,3 +1139,24 @@ class C2FSB(QProcess):
 
 def qlog(msg, level=Qgis.Info):
     QgsMessageLog.logMessage(str(msg), aName+'_simulation', level)
+
+def Blog(msg, msg_cat=None, level=Qgis.Info, msgBar=None, duration=None):
+    """ log to QgsMessageLog & msgBar
+        levels = {1: [Qgis.]Info, 2:Warning, 3:Critical, 4:Success}
+    """
+    lvl = {1: Qgis.Info,
+           2: Qgis.Warning,
+           3: Qgis.Critical,
+           4: Qgis.Success}
+    QgsMessageLog.logMessage(str(msg), msg_cat, lvl[level])
+    if msgBar:
+        msgBar.pushMessage( msg_cat, str(msg), level=lvl[level], duration=duration)
+
+def gen_name(length=4):
+    return ''.join(map(chr,np.random.randint(97,123,length)))
+
+def gen_df(n=3, m=4):
+    data = np.random.random((n,m))
+    col_nam = [ gen_name() for i in range(m) ]
+    df = DataFrame( data, columns=col_nam)
+    return df

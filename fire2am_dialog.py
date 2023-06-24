@@ -33,7 +33,7 @@ from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
-from qgis.core import Qgis
+from qgis.core import Qgis, QgsMessageLog
 
 from .fire2am_utils import MatplotlibFigures, PandasModel, aName
 
@@ -69,15 +69,51 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layout().addWidget(self.msgBar) # at the end: .insertRow . see qformlayout
         self.PandasModel = PandasModel
         self.plt = MatplotlibFigures( parent = parent, graphicsView = self.graphicsView)
-        self.tableView_1.installEventFilter(self)
-        self.tableView_2.installEventFilter(self)
+        self.stats.installEventFilter(self)
+        self.statsdf = None
         self.state = {}
         self.updateState()
         self.args = {}
-        self.statdf = None
         self.layerComboBoxes = { o.objectName():o for o in self.findChildren( QgsMapLayerComboBox, options= Qt.FindChildrenRecursively) }
         self.init_default_values()
         self.pushButton_windRandomize.pressed.connect( self.slot_windRandomize)
+        self.tables = {}
+        self.df = {}
+        self.update_tables()
+
+    def update_tables(self):
+        self.tables.update({o.objectName(): o
+                            for o in self.findChildren(QtWidgets.QTableView, 
+                                                        options= Qt.FindChildrenRecursively)})
+        qlog(self.tables)
+
+    def update_data(self, name, df, **kwargs):
+        assert name in self.tables.keys()
+        old = self.dlg.df[name]
+        df['Index'] = df.index
+        df = concat((old,df), kwargs)
+        self.dlg.add_data(name,df)
+        qlog(f'update {name}:{df}')
+
+    def add_data(self, name, df):
+        self.df[name] = df
+        df['Index'] = df.index
+        self.tables[name].setModel(PandasModel(df))
+        qlog(f'add {name}:{df}')
+
+    def add_table(self, name='hola'):
+        if name in self.tables:
+            return
+        widget = QtWidgets.QWidget()
+        tableview = QtWidgets.QTableView(parent=widget)
+        tableview.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        tableview.setObjectName(name)
+        tableview.installEventFilter(self)
+        widget.setLayout(QtWidgets.QGridLayout())
+        widget.layout().addWidget(tableview)
+        widget.setToolTip(name)
+        self.tabWidget_tables.addTab( widget, name)
+        self.tables[name] = tableview
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 
@@ -145,6 +181,16 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_windDirection.setValue(WD)
         self.spinBox_windSpeed.setValue(WS)
 
+def qlog(msg, level=Qgis.Info):
+    """ <0 ''
+        0:Qgis.Info
+        1:  .Warning
+        2:  .Critical
+        3:  .Success
+        >3: NONE
+    """
+    QgsMessageLog.logMessage(str(msg), aName+'_dialog', level)
+
     ''' TBD if user pastes tabular data into table
     def pasteSelection(self):
         selection = self.selectedIndexes()
@@ -167,7 +213,6 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
                     model.setData(model.index(index.row(), index.column()), arr[row][column])
         return
     scrap init
-        self.tableView_1.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-        self.tableView_2.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
+        self.stats.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
     '''
 
