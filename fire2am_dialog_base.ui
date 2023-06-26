@@ -761,7 +761,7 @@ Also hardware limited</string>
           <number>999999999</number>
          </property>
          <property name="value">
-          <number>72</number>
+          <number>10000</number>
          </property>
         </widget>
        </item>
