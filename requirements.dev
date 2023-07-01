@@ -1,9 +1,10 @@
+# language server protocol
+python-lsp-server[pylint]
+pylsp-mypy
+python-lsp-black
+pylsp-rope
+
+# install IPython qgis plugin
 qtconsole
-pyperclip
-pandas
-numpy
-seaborn
-imread
-tqdm
-networkx
-Pillow
+
+-r requirements.txt
