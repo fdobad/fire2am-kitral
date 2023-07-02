@@ -140,7 +140,7 @@ class fire2amClass:
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
         locale = QSettings().value("locale/userLocale")[0:2]
-        locale_path = os.path.join(self.plugin_dir, "i18n", "fire2amClass_{}.qm".format(locale))
+        locale_path = os.path.join(self.plugin_dir, "i18n", f"fire2amClass_{locale}.qm")
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -339,7 +339,7 @@ class fire2amClass:
         nlog("opened", title="argdlg", text="run_Argparse")
         self.argdlg.show()
         result = self.argdlg.exec_()
-        nlog("closed", title="argdlg", text="run_Argparse")
+        nlog("closed", title="argdlg", text="run_Argparse", result=result)
 
     def showPlot(self, index):
         nlog(title="plots", text=f"Showing plot index:{index}")
@@ -731,7 +731,7 @@ class fire2amClass:
                     layer.setCrs(self.crs())
                     self.extent = layer.extent
                     nlog(
-                        text=f"Defaulting to project CRS!",
+                        text="Defaulting to project CRS!",
                         title="Fuel CRS set from project!",
                         level=1,
                         to_bar=True,
@@ -739,7 +739,7 @@ class fire2amClass:
                 else:
                     # Note maybe the program should never reach here!
                     nlog(
-                        text=f"Neither the project nor the Fuel layer have a valid CRS!",
+                        text="Neither the project nor the Fuel layer have a valid CRS!",
                         title="Must set CRSs!",
                         level=1,
                         to_bar=True,
@@ -851,13 +851,12 @@ class fire2amClass:
                 self.dlg.state["fileWidget_weatherFile"] = str(afile)
                 nlog(text="looks ok!", title="Weather.csv", level=3, to_bar=True)
                 return
-            else:
-                nlog(
-                    text=f"file {afile} format problem",
-                    title="Weather.csv",
-                    level=1,
-                    to_bar=True,
-                )
+            nlog(
+                text=f"file {afile} format problem",
+                title="Weather.csv",
+                level=1,
+                to_bar=True,
+            )
         except Exception as e:
             nlog(
                 text=f'"{e}" problem selecting "{afile}"',
@@ -904,8 +903,8 @@ class fire2amClass:
             }
         )
         nlog(
-            text='step 1',
-            title='makeArgs',
+            text="step 1",
+            title="makeArgs",
             args=args,
         )
         args.pop("windDirection")
@@ -938,8 +937,8 @@ class fire2amClass:
         else:
             args["finalGrid"] = True
         nlog(
-            text='step 2',
-            title='makeArgs',
+            text="step 2",
+            title="makeArgs",
             args=args,
         )
         # 2d crow fire logic
@@ -958,8 +957,8 @@ class fire2amClass:
         for akey in popkeys:
             args.pop(akey)
         nlog(
-            text='step 3',
-            title='makeArgs',
+            text="step 3",
+            title="makeArgs",
             args=args,
         )
         # 4 update argparse dialog
@@ -983,12 +982,12 @@ class fire2amClass:
             self.proc_dir = self.argdlg.fileWidget_directory.filePath()
             self.proc_exe = self.argdlg.header
         nlog(
-            text='step 4',
-            title='makeArgs',
+            text="step 4",
+            title="makeArgs",
             args=args,
         )
         # 5 generate command line options
-        for key, val in args.items():
+        for key, _ in args.items():
             if key in self.parser:
                 if self.parser[key]["type"] is None:
                     gen_cmd += self.parser[key]["option_strings"][0] + " "
@@ -1000,8 +999,8 @@ class fire2amClass:
         self.args = args
         self.gen_cmd = gen_cmd
         nlog(
-            text='step 4',
-            title='makeArgs',
+            text="step 4",
+            title="makeArgs",
             args=args,
             gen_cms=gen_cmd,
         )
@@ -1161,13 +1160,12 @@ class fire2amClass:
         self.args.update(self.argdlg.gen_args)
         """ but didnt mention inFolder """
         if "InFolder" not in self.argdlg.gen_args:
-            nlog(title="dev run",text="Fail: InFolder not in argdialog! Run normal instead!", level=Qgis.Critical)
+            nlog(title="dev run", text="Fail: InFolder not in argdialog! Run normal instead!", level=Qgis.Critical)
             return
-        elif not Path(self.args["InFolder"]).is_dir():
-            nlog(title="dev run",text="Fail: InFolder does not exists! Run normal instead!", level=Qgis.Critical)
+        if not Path(self.args["InFolder"]).is_dir():
+            nlog(title="dev run", text="Fail: InFolder does not exists! Run normal instead!", level=Qgis.Critical)
             return
-        else:
-            self.args["InFolder"] = Path(self.args["InFolder"])
+        self.args["InFolder"] = Path(self.args["InFolder"])
         """ but didnt mention outFolder """
         if "OutFolder" not in self.argdlg.gen_args:
             self.args["OutFolder"] = Path(self.args["InFolder"], "results")
@@ -1335,7 +1333,7 @@ class fire2amClass:
         """default finish qgs task"""
         if not exception:
             if value:
-                self.iface.messageBar().pushMessage("task finished & returned: {}".format(value))
+                self.iface.messageBar().pushMessage(f"task finished & returned: {value}")
             else:
                 self.iface.messageBar().pushMessage("task finished")
         else:
@@ -1360,7 +1358,7 @@ class fire2amClass:
             )
             return
         if not self.simulation_process.ended:
-            if self.simulation_process.state_code in (QProcess.ProcessState.Running,QProcess.ProcessState.Starting):
+            if self.simulation_process.state_code in (QProcess.ProcessState.Running, QProcess.ProcessState.Starting):
                 nlog(
                     title="Run after can't start",
                     text="Process already running",
@@ -1389,14 +1387,14 @@ class fire2amClass:
 # exitCode()
 ExitStatus = {
     QProcess.NormalExit: "NormalExit",  # 0
-    QProcess.CrashExit: "CrashExit",
-}  # 1
+    QProcess.CrashExit: "CrashExit",  # 1
+}
 # state()
 ProcessState = {
     QProcess.NotRunning: "NotRunning",  # 0
     QProcess.Starting: "Running",  # 1
-    QProcess.Running: "Starting",
-}  # 2
+    QProcess.Running: "Starting",  # 2
+}
 # error()
 ProcessError = {
     QProcess.FailedToStart: "FailedToStart",  # 0
@@ -1404,8 +1402,8 @@ ProcessError = {
     QProcess.Timedout: "Timedout",  # 2
     QProcess.ReadError: "ReadError",  # 3
     QProcess.WriteError: "WriteError",  # 4
-    QProcess.UnknownError: "UnknownError",
-}  # 5
+    QProcess.UnknownError: "UnknownError",  # 5
+}
 
 
 class C2FSB(QProcess):
@@ -1454,7 +1452,7 @@ class C2FSB(QProcess):
     def start(self, cmd, proc_dir=None):
         self.log_stat("start INI")
         if not self.ended:
-            if self.state_code == QProcess.ProcessState.Running or self.state_code == QProcess.ProcessState.Starting:
+            if self.state_code in (QProcess.ProcessState.Running, QProcess.ProcessState.Starting):
                 nlog(
                     "Can't start simulation, process already running",
                     title="simulation",
