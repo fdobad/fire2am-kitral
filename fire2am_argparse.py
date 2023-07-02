@@ -55,7 +55,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
         # text browser containing the output command
         text = QtWidgets.QTextBrowser()
         fm = text.fontMetrics()
-        text.setMinimumHeight(round(1.1*fm.height()))
+        text.setMinimumHeight(round(2*fm.height()))
         text.setMaximumHeight(4*fm.height())
         text.setVisible(False)
         vlayout.addWidget(text)

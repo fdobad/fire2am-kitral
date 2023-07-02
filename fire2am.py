@@ -1360,10 +1360,7 @@ class fire2amClass:
             )
             return
         if not self.simulation_process.ended:
-            if (
-                self.simulation_process.state_code == QProcess.ProcessState.Running
-                or self.simulation_process.state_code == QProcess.ProcessState.Starting
-            ):
+            if self.simulation_process.state_code in (QProcess.ProcessState.Running,QProcess.ProcessState.Starting):
                 nlog(
                     title="Run after can't start",
                     text="Process already running",
