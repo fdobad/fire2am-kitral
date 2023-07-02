@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>5</number>
+      <number>3</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -744,7 +744,7 @@ Also hardware limited</string>
           <number>999999999</number>
          </property>
          <property name="value">
-          <number>72</number>
+          <number>10000</number>
          </property>
         </widget>
        </item>
@@ -919,24 +919,10 @@ Ask the fire2a team for access to the repo</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
+      <item row="0" column="1">
        <widget class="QPushButton" name="pushButton_run">
         <property name="text">
          <string>Run</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPushButton" name="pushButton">
-        <property name="text">
-         <string>PushButton</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QPushButton" name="pushButtonB">
-        <property name="text">
-         <string>PushButton</string>
         </property>
        </widget>
       </item>

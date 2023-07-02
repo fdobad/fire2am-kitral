@@ -4,8 +4,10 @@ from pandas import DataFrame, Series
 import numpy as np
 import os
 
+from qgis.gui import QgsMessageBar
+
 '''CONSTANTS'''
-aName = 'fire2am'
+from . import TAG
 
 
 ''' 
@@ -194,7 +196,7 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %
 #logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 from qgis.core import Qgis, QgsMessageLog
-def log(*args, pre='', level=1, plugin=aName, msgBar=None, duration=None):
+def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
     '''
     log(*args, level=1)
 
@@ -259,6 +261,44 @@ def log(*args, pre='', level=1, plugin=aName, msgBar=None, duration=None):
             else:
                 msgBar.pushMessage( pre, args, level=Qgis.Success)
 
+class nlog:
+    def __init__(self, qgsMessageLog, qgsMessageBar=None):
+        self.qgsMessageLog = qgsMessageLog
+        self.qgsMessageBar = qgsMessageBar
+
+    def set_qgsMessageBar(self, qgsMessageBar):
+        self.qgsMessageBar = qgsMessageBar
+
+    def __call__(self, *args, **kwargs):
+        """Log message to QGIS log and message bar.
+        args & kwargs are logged as strings
+        Except these kwargs that are needed:
+            title, text, tag, level, duration, notifyUser, to_bar
+            levels = QgisInfo|Warning|Critical|Success : 0,1,2,3
+        """
+        title = kwargs.get('title', '')
+        text = kwargs.get('text', '')
+        tag = kwargs.get('tag')
+        tag = f"{TAG}_{tag}" if tag else TAG
+        level = kwargs.get('level', 0)
+        duration = kwargs.get('duration', -1)
+        notifyUser = kwargs.get('notifyUser', True) # pylint: disable=invalid-name
+        to_bar = kwargs.get('to_bar')
+        for key in ['title', 'text', 'tag', 'level', 'duration', 'notifyUser', 'to_bar']:
+            if key in kwargs:
+                del kwargs[key]
+        argstr = str(args).replace('(', '').replace(')', '')
+        kwargstr = str(kwargs).replace('{', '').replace('}', '')
+        sep = ', ' if argstr and kwargstr else ''
+        arg = f'{sep}{argstr}{sep}{kwargstr}'
+        if title=='' and text=='' and arg=='':
+            return
+        message = f'{title}: {text} {arg}'
+        self.qgsMessageLog.logMessage(message, tag, level, notifyUser)
+        if to_bar and self.qgsMessageBar:
+            text += arg
+            self.qgsMessageBar.pushMessage(title, text, level, duration)
+
 def randomNames(n=8, l=4):
     ''' n words, l word length
     for i in range(20):
@@ -301,6 +341,7 @@ def rgb2hex_color(r,g,b) -> str:
     return '#%02x%02x%02x'%(r,g,b)
     #return '%02x%02x%02x'%(int(r*255), int(g*255), int(b*255))
 
+from pandas import read_csv
 def fuel_lookuptable_colorconvert(afile = 'spain_lookup_table.csv'):
     df = read_csv(afile, usecols=['grid_value','r','g','b','h','s','l'], dtype=np.int16)
     from colorsys import rgb_to_hls

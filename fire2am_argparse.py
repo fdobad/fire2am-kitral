@@ -11,7 +11,8 @@ from argparse import Namespace
 import sys, pickle
 import pyperclip
 import os.path
-from .fire2am_utils import safe_cast_ok, aName, get_params, log
+from .fire2am_utils import safe_cast_ok, get_params, log
+from . import TAG
 from .ParseInputs2 import Parser2
 
 class fire2amClassDialogArgparse(QtWidgets.QDialog):
@@ -23,7 +24,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
         # mild consistency check
         if any( g in self.args.keys() for g in self.groups):
             offenders = [ g for g in self.groups if g in self.args.keys() ]
-            msg = aName+' ERROR:Group name (parser_group.title) in args.dest names:\n\t'\
+            msg = TAG+' ERROR:Group name (parser_group.title) in args.dest names:\n\t'\
                                 + str(offenders)\
                                 +'\nCorrect in ParseInputs.py file'
             layout = QtWidgets.QHBoxLayout()
@@ -42,7 +43,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
 
     def setupUi(self):
         self.setWindowFlags( Qt.WindowCloseButtonHint | Qt.WindowMaximizeButtonHint)
-        self.setWindowTitle(aName +' all options (very experimental)')
+        self.setWindowTitle(TAG +' all options (very experimental)')
         # add stuff to a layout
         vlayout = QtWidgets.QVBoxLayout()
         #vlayout.addWidget( QtWidgets.QSpacerItem(1,1))

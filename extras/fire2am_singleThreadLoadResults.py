@@ -323,7 +323,7 @@
         vectorLayer = self.iface.addVectorLayer( str(self.geopackage)+'|layername='+mergedName, mergedName, 'ogr')
         vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+mergedName+'_layerStyle.qml'))
     def oneThreadFireScars(self):
-        self.iface.messageBar().pushSuccess(aName+': do it', 'push button pressed')
+        self.iface.messageBar().pushSuccess(TAG+': do it', 'push button pressed')
         self.project = QgsProject().instance()
         #self.now = datetime(23,3,30,0,22,13 )
         self.now = datetime(23,3,30,12,30,9)
@@ -470,7 +470,7 @@
                 vectorLayer.loadNamedStyle( os.path.join( self.plugin_dir, 'img'+sep+'Fire_Evolution_layerStyle.qml'))
 
 def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg):
-    QgsMessageLog.logMessage('task {} Started processing output'.format(task.description()), aName, Qgis.Info)
+    QgsMessageLog.logMessage('task {} Started processing output'.format(task.description()), TAG, Qgis.Info)
     task.setProgress(0)
     ''' get [sim,cell] from regex '''
     simulation, ignitionCell = np.fromiter( re.findall( 'ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)',
@@ -488,14 +488,14 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg)
         if task.isCanceled():
             raise Exception('canceled')
         c+=1
-    QgsMessageLog.logMessage('task {}\tadded feature points'.format(task.description()), aName, Qgis.Info)
+    QgsMessageLog.logMessage('task {}\tadded feature points'.format(task.description()), TAG, Qgis.Info)
     ''' create vector layer '''
     vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
     vectorLayer.setCrs( baseLayer.crs())
     ret, val = vectorLayer.dataProvider().addFeatures(feats)
     if not ret:
         raise Exception('creating vector layer in memory, added features'+str(val))
-    QgsMessageLog.logMessage('task {}\tcreated vector layer in memory, added features'.format(task.description()), aName, Qgis.Info)
+    QgsMessageLog.logMessage('task {}\tcreated vector layer in memory, added features'.format(task.description()), TAG, Qgis.Info)
     task.setProgress(90)
     '''
     # TODO write to every gpkg
@@ -506,9 +506,9 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg)
     ret, val = writeVectorLayer( vectorLayer, layerName, stats_gpkg)
     if ret != 0:
         raise Exception('written to geopackage'+str(val))
-    QgsMessageLog.logMessage('task {}\twriting to geopackage'.format(task.description()), aName, Qgis.Info)
+    QgsMessageLog.logMessage('task {}\twriting to geopackage'.format(task.description()), TAG, Qgis.Info)
     task.setProgress(100)
-    QgsMessageLog.logMessage('task {} Ended'.format(task.description()), aName, Qgis.Info)
+    QgsMessageLog.logMessage('task {} Ended'.format(task.description()), TAG, Qgis.Info)
 
     def calc_load_betweenness_centrality(self):
         self.dlg.updateState()

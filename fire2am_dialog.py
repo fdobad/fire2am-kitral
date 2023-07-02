@@ -35,7 +35,8 @@ from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
 from qgis.core import Qgis, QgsMessageLog
 
-from .fire2am_utils import MatplotlibFigures, PandasModel, aName
+from .fire2am_utils import MatplotlibFigures, PandasModel
+from . import TAG
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -85,7 +86,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.tables.update({o.objectName(): o
                             for o in self.findChildren(QtWidgets.QTableView, 
                                                         options= Qt.FindChildrenRecursively)})
-        qlog(self.tables)
+        #qlog(self.tables)
 
     def update_data(self, name, df, **kwargs):
         assert name in self.tables.keys()
@@ -93,13 +94,13 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         df['Index'] = df.index
         df = concat((old,df), kwargs)
         self.dlg.add_data(name,df)
-        qlog(f'update {name}:{df}')
+        #qlog(f'update {name}:{df}')
 
     def add_data(self, name, df):
         self.df[name] = df
         df['Index'] = df.index
         self.tables[name].setModel(PandasModel(df))
-        qlog(f'add {name}:{df}')
+        #qlog(f'add {name}:{df}')
 
     def add_table(self, name='hola'):
         if name in self.tables:
@@ -173,23 +174,13 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
     def init_default_values(self):
         self.spinBox_nthreads.setValue( max(cpu_count() - 1, 1))
         self.spinBox_nthreads.setMaximum(cpu_count())
-        self.msgBar.pushMessage(aName+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
+        self.msgBar.pushMessage(TAG+' says:','Keep a saved project open, drag&drop rasters from the ProjectHome then Restore Defaults', duration=0, level=Qgis.Info)
 
     def slot_windRandomize(self):
         WD = np.random.randint(0,359)
         WS = np.random.randint(1,100)
         self.spinBox_windDirection.setValue(WD)
         self.spinBox_windSpeed.setValue(WS)
-
-def qlog(msg, level=Qgis.Info):
-    """ <0 ''
-        0:Qgis.Info
-        1:  .Warning
-        2:  .Critical
-        3:  .Success
-        >3: NONE
-    """
-    QgsMessageLog.logMessage(str(msg), aName+'_dialog', level)
 
     ''' TBD if user pastes tabular data into table
     def pasteSelection(self):
@@ -214,5 +205,9 @@ def qlog(msg, level=Qgis.Info):
         return
     scrap init
         self.stats.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
+
+def qlog(msg, level=Qgis.Info):
+    QgsMessageLog.logMessage(str(msg), TAG+'_dialog', level)
+
     '''
 

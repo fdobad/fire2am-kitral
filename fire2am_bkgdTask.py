@@ -22,13 +22,13 @@ from qgis.PyQt.QtCore import QVariant
 # pylint: enable=no-name-in-module
 # plugin
 from .extras.downstream_protection_value import digraph_from_messages, shortest_propagation_tree, dpv_maskG, get_flat_pv
-from .fire2am_utils import aName, log
-from . import fire2a_checks
+from .fire2am_utils import log
+from . import fire2a_checks, TAG
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer)
 
-MESSAGE_CATEGORY = aName+'_background'
+MESSAGE_CATEGORY = TAG+'_background'
 
 class after_ForestGrid(QgsTask):
     """
@@ -415,7 +415,7 @@ class after_asciiDir(QgsTask):
             #df = DataFrame( st, index=st._fields, columns=[self.layerName])
             df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
             # get current table add column, store, reset
-            bf = self.dlg.statdf
+            bf = self.dlg.statsdf
             df = concat([bf,df], axis=1)
             self.dlg.statsdf = df
             self.dlg.stats.setModel(self.dlg.PandasModel(df))
