@@ -8,12 +8,14 @@ preview = true
 good-names = ["i",
               "j",
               "k",
+              "e",
               "W",
               "H",
               "dt",
               "df",
               "dx",
               "dy",
+              "ok",
               "_",
 ]
 
