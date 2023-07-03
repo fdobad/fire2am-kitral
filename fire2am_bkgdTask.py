@@ -291,13 +291,11 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            # add to table
-            result['dlg'].add_table('MeanFireScar[px]')
-            result['dlg'].add_data('MeanFireScar[px]', result['df'])
-            #bf = result['dlg'].statdf
-            #df = concat([bf,result['df']], axis=1)
-            #result['dlg'].statsdf = df
-            #result['dlg'].stats.setModel(result['dlg'].PandasModel(df))
+            # add to stats table
+            bf = result['dlg'].statsdf
+            df = concat((bf,result['df']), axis=1)
+            result['dlg'].statsdf = df
+            result['dlg'].stats.setModel(result['dlg'].PandasModel(df))
             QgsMessageLog.logMessage(result['description']+f' done ui update {type(result["dlg"])} {type(result["iface"])}', MESSAGE_CATEGORY, Qgis.Info)
     else:
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)

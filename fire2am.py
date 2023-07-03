@@ -64,7 +64,6 @@ import os.path
 import re
 import stat
 from datetime import datetime, timedelta
-from functools import partial
 from glob import glob
 from os import sep
 from pathlib import Path
@@ -72,22 +71,16 @@ from platform import system as plt_sys
 from shutil import copy
 
 import numpy as np
-from pandas import DataFrame, concat  # , Series, Timestamp, read_csv
-# pylint: disable=no-name-in-module
+from pandas import DataFrame
 from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
-                       QgsFeature, QgsField, QgsGeometry,
                        QgsMapLayerProxyModel, QgsMapLayerType, QgsMessageLog,
-                       QgsPointXY, QgsProject, QgsRasterBandStats,
-                       QgsRasterLayer, QgsTask, QgsVectorFileWriter,
-                       QgsVectorLayer, QgsWkbTypes)
+                       QgsProject, QgsTask, QgsWkbTypes)
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings, QTimer,
-                              QTranslator, QVariant)
+                              QTranslator)
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
-from scipy import stats
 
-# Import the code for the dialog
 from . import TAG, fire2a_checks
 from .fire2am_argparse import fire2amClassDialogArgparse
 from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
@@ -96,18 +89,12 @@ from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
                                check_weather_folder_bkgd)
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
-from .fire2am_utils import get_params, log, nlog  # , randomDataFrame
+from .fire2am_utils import get_params, nlog
 # Initialize Qt resources from file resources.py
 from .img.resources import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from .ParseInputs2 import Parser2
-from .qgis_utils import (array2rasterFloat32, array2rasterInt16,
-                         check_gdal_driver_name, checkLayerPoints, id2xy,
-                         matchPoints2Raster, matchRasterCellIds2points,
-                         mergeVectorLayers,
-                         rasterRenderInterpolatedPseudoColor, writeVectorLayer)
-
-# pylint: enable=no-name-in-module
-
+from .qgis_utils import (check_gdal_driver_name, checkLayerPoints,
+                         matchPoints2Raster)
 
 # For debugging
 # import pdb
@@ -455,11 +442,7 @@ class fire2amClass:
                 name = "check_weather_folder_bkgd"
                 self.task[name] = check_weather_folder_bkgd(name, self.dlg, wfolder)
                 self.taskManager.addTask(self.task[name])
-        """ prepare stats table """
-        st = stats.describe([0, 1])
-        df = DataFrame(("Name", *st._fields), index=("Name", *st._fields), columns=["Attributes"])
-        self.dlg.statsdf = df
-        self.dlg.stats.setModel(self.dlg.PandasModel(df))
+        self.dlg.setup_tables()
 
     def connect_slots(self):
         """main"""
@@ -1206,7 +1189,7 @@ class fire2amClass:
         base_layer = self.dlg.state["layerComboBox_fuels"]
         log_file = Path(self.args["OutFolder"], "LogFile.txt")
         if log_file.is_file():
-            name='Ignition_Points'
+            name = "Ignition_Points"
             self.task[name] = after_logFile(name, self.dlg, self.iface, nlog, log_file, base_layer, self.plugin_dir)
             self.taskManager.addTask(self.task[name])
         else:
@@ -1313,9 +1296,9 @@ class fire2amClass:
                 self.taskManager.addTask(self.task[name])
 
     def slot_run_after(self):
-        """TODO test
-        processes an output folder
+        """ processes an output folder
         may delete you files! backup first
+        input & output folder must be set on the args dialog first
         """
         if self.first_start_argparse:
             nlog(
@@ -1518,7 +1501,3 @@ class C2FSB(QProcess):
         msg = ProcessState.get(state, "!Unknown")
         self.append_message(f"== process state changed : {msg}")
         self.log_stat("on_state_changed")
-
-
-def qlog(msg, level=Qgis.Info):
-    QgsMessageLog.logMessage(str(msg), TAG + "_simulation", level)

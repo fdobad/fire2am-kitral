@@ -29,6 +29,9 @@ import os
 from multiprocessing import cpu_count
 
 import numpy as np
+from scipy import stats
+from pandas import DataFrame
+
 from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
@@ -115,6 +118,17 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         widget.setToolTip(name)
         self.tabWidget_tables.addTab( widget, name)
         self.tables[name] = tableview
+
+    def setup_tables(self):
+        self.update_tables()
+        for k,v in self.tables.items():
+            v.destroy()
+        self.add_table('Stats')
+        st = stats.describe([0, 1])
+        df = DataFrame(("Name", *st._fields), index=("Name", *st._fields), columns=["Attributes"])
+        self.statsdf = df
+        self.stats.setModel(self.PandasModel(df))
+
 
     def updateState(self):
         ''' for widgets put their state, value, layer or filepath into a self.state dict 
