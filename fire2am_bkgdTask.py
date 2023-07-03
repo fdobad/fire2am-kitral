@@ -558,38 +558,76 @@ class check_weather_folder_bkgd(QgsTask):
             log('at %s'%self.directory, pre='Bad Weathers Folder!', level=2, msgBar=self.dlg.msgBar)
         self.finished = True
 
-def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
-    QgsMessageLog.logMessage(task.description()+' Started ', MESSAGE_CATEGORY, Qgis.Info)
-    task.setProgress(0)
-    ''' get [sim,cell] from regex '''
-    simulation, ignitionCell = np.fromiter( re.findall( 'ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)',
-                                                        logText), dtype=np.dtype((int,2)) ).T
-    ''' add each point feature '''
-    npts = len(ignitionCell)
-    feats = []
-    c=0
-    for s,(x,y) in zip(simulation, matchRasterCellIds2points( ignitionCell-1, baseLayer)):
-        f = QgsFeature()
-        f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
-        f.setId(s)
-        feats += [ f]
-        task.setProgress(c/npts*80)
-        QgsMessageLog.logMessage(task.description()+f' px:{ignitionCell-1} -> x:{x},y:{y}', MESSAGE_CATEGORY, Qgis.Info)
-        c+=1
-        if task.isCanceled():
-            raise Exception('canceled')
-    ''' create vector layer '''
-    vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
-    vectorLayer.setCrs( baseLayer.crs())
-    ret, val = vectorLayer.dataProvider().addFeatures(feats)
-    if not ret:
-        raise Exception(task.description()+' exception creating vector layer in memory adding features '+str(val))
-    task.setProgress(90)
-    ret, val = writeVectorLayer( vectorLayer, layerName, out_gpkg)
-    if ret != 0:
-        raise Exception(task.description()+' exception writing to geopackage '+str(val))
-    task.setProgress(100)
-    QgsMessageLog.logMessage(task.description()+' Ended', MESSAGE_CATEGORY, Qgis.Info)
+class after_logFile(QgsTask):
+    def __init__(self, description, dlg, iface, nlog, log_file, base_layer, plugin_dir):
+        super().__init__(description, QgsTask.CanCancel)
+        self.exception = None
+        self.dlg = dlg
+        self.iface = iface
+        self.nlog = nlog
+        self.log_file = log_file
+        self.base_layer = base_layer
+        self.style_file = str(Path( plugin_dir, 'img', 'points_layerStyle.qml'))
+        self.out_file = self.log_file.absolute().parent / (self.description()+'.gpkg')
+        self.setProgress(1)
+
+    def run(self):
+        self.nlog(title=self.description(), text='Started', progress=self.progress())
+        text = self.log_file.read_text()
+        # get [sim,cell] from regex
+        simulation, ignitionCell = np.fromiter(re.findall('ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)',
+                                                          text),
+                                               dtype=np.dtype((int,2))).T
+        self.setProgress(10)
+        # add each point feature
+        npts = len(ignitionCell)
+        ignitionCell = ignitionCell - 1
+        self.nlog(title=self.description(), text='Run Started (showing 5 max)', ignitionCells=ignitionCell[:5], progress=self.progress())
+        features = []
+        points = []
+        c=0
+        for s,(x,y) in zip(simulation, matchRasterCellIds2points( ignitionCell, self.base_layer)):
+            points += [(x,y)]
+            f = QgsFeature()
+            f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+            f.setId(s)
+            features += [f]
+            self.setProgress(10+c/npts*60)
+            c+=1
+            if self.isCanceled():
+                raise Exception('User canceled')
+        self.nlog(title=self.description(), text='Features (showing 5 max)', points=points[:5], progress=self.progress())
+        # create & write vector layer
+        vector_layer = QgsVectorLayer('point', self.description(), 'memory')
+        vector_layer.setCrs( self.base_layer.crs())
+        ret, val = vector_layer.dataProvider().addFeatures(features)
+        self.setProgress(80)
+        if not ret:
+            raise Exception(f"Exception creating vector layer in memory or adding features {val}")
+        ret, val = writeVectorLayer( vector_layer, self.description(), self.out_file)
+        if ret != 0:
+            raise Exception(f"Exception writing to geopackage {val}")
+        self.setProgress(90)
+        self.nlog(title=self.description(), text='Run Ended', progress=self.progress())
+        return True 
+
+    def cancel(self):
+        super().cancel()
+        self.nlog(title=self.description(), text='Canceled signal sent', progress=self.progress())
+
+    def finished(self, result):
+        if self.exception:
+            self.nlog(title=self.description(), text='Finished', exception=self.exception, level=2, to_bar=True)
+        elif result:
+            self.iface.addVectorLayer(
+                                    f"{self.out_file}|layername={self.description()}",
+                                    self.description(),
+                                    "ogr"
+            ).loadNamedStyle(self.style_file)
+            self.setProgress(100)
+            self.nlog(title=self.description(), text='Finished ok!', result=result, level=3, progress=self.progress(), to_bar=True)
+        else:
+            self.nlog(title=self.description(), text='Finished ? no exception & no result!', result=result, level=1, to_bar=True)
 
 class after_betweenness_centrality(QgsTask):
     def __init__(self, description, iface, dlg, args, folder_name, file_name, extent, crs, plugin_dir):

@@ -567,3 +567,75 @@ def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg, stats_gpkg)
         minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
         maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
         rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
+
+def afterTask_logFile(task, logText, layerName, baseLayer, out_gpkg):
+    QgsMessageLog.logMessage(task.description()+' Started ', MESSAGE_CATEGORY, Qgis.Info)
+    task.setProgress(0)
+    ''' get [sim,cell] from regex '''
+    simulation, ignitionCell = np.fromiter( re.findall( 'ignition point for Year [0-9]*, sim ([0-9]+): ([0-9]+)',
+                                                        logText), dtype=np.dtype((int,2)) ).T
+    ''' add each point feature '''
+    npts = len(ignitionCell)
+    feats = []
+    c=0
+    for s,(x,y) in zip(simulation, matchRasterCellIds2points( ignitionCell-1, baseLayer)):
+        f = QgsFeature()
+        f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+        f.setId(s)
+        feats += [ f]
+        task.setProgress(c/npts*80)
+        QgsMessageLog.logMessage(task.description()+f' px:{ignitionCell-1} -> x:{x},y:{y}', MESSAGE_CATEGORY, Qgis.Info)
+        c+=1
+        if task.isCanceled():
+            raise Exception('canceled')
+    ''' create vector layer '''
+    vectorLayer = QgsVectorLayer( 'point', layerName, 'memory')
+    vectorLayer.setCrs( baseLayer.crs())
+    ret, val = vectorLayer.dataProvider().addFeatures(feats)
+    if not ret:
+        raise Exception(task.description()+' exception creating vector layer in memory adding features '+str(val))
+    task.setProgress(90)
+    ret, val = writeVectorLayer( vectorLayer, layerName, out_gpkg)
+    if ret != 0:
+        raise Exception(task.description()+' exception writing to geopackage '+str(val))
+    task.setProgress(100)
+    QgsMessageLog.logMessage(task.description()+' Ended', MESSAGE_CATEGORY, Qgis.Info)
+
+def after(self):
+    """open file"""
+    with open(self.args["OutFolder"] / "LogFile.txt", "rb", buffering=0) as afile:
+        logText = afile.read().decode()
+    """ print into run text area """
+    self.simulation_process.append_message(logText)
+    """ process logfile """
+    layerName = "Ignition_Points"
+    out_gpkg = Path(self.args["OutFolder"], layerName + ".gpkg")
+    self.task["log"] = QgsTask.fromFunction(
+        layerName,
+        afterTask_logFile,
+        on_finished=self.on_finished,
+        logText=logText,
+        layerName=layerName,
+        baseLayer=baseLayer,
+        out_gpkg=out_gpkg,
+    )
+    self.task["log"].taskCompleted.connect(
+        partial(self.ui_addVectorLayer, out_gpkg, layerName, "points_layerStyle.qml")
+    )
+    self.taskManager.addTask(self.task["log"])
+
+def on_finished(self, exception, value=None):
+    """default finish qgs task"""
+    if not exception:
+        if value:
+            self.iface.messageBar().pushMessage(f"task finished & returned: {value}")
+        else:
+            self.iface.messageBar().pushMessage("task finished")
+    else:
+        self.iface.messageBar().pushMessage(str(exception))
+
+def ui_addVectorLayer(self, geopackage, layerName, styleName):
+    """load a layer"""
+    vectorLayer = self.iface.addVectorLayer(str(geopackage) + "|layername=" + layerName, layerName, "ogr")
+    vectorLayer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + styleName))
+

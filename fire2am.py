@@ -92,7 +92,7 @@ from . import TAG, fire2a_checks
 from .fire2am_argparse import fire2amClassDialogArgparse
 from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
                                after_downstream_protection_value,
-                               after_ForestGrid, afterTask_logFile,
+                               after_ForestGrid, after_logFile,
                                check_weather_folder_bkgd)
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
@@ -1203,28 +1203,12 @@ class fire2amClass:
             return
         # logFile for: ignition points
         baseLayer = self.dlg.state["layerComboBox_fuels"]
-        if Path(self.args["OutFolder"], "LogFile.txt").is_file():
-            """open file"""
-            with open(self.args["OutFolder"] / "LogFile.txt", "rb", buffering=0) as afile:
-                logText = afile.read().decode()
-            """ print into run text area """
-            self.simulation_process.append_message(logText)
-            """ process logfile """
-            layerName = "Ignition_Points"
-            out_gpkg = Path(self.args["OutFolder"], layerName + ".gpkg")
-            self.task["log"] = QgsTask.fromFunction(
-                layerName,
-                afterTask_logFile,
-                on_finished=self.on_finished,
-                logText=logText,
-                layerName=layerName,
-                baseLayer=baseLayer,
-                out_gpkg=out_gpkg,
-            )
-            self.task["log"].taskCompleted.connect(
-                partial(self.ui_addVectorLayer, out_gpkg, layerName, "points_layerStyle.qml")
-            )
-            self.taskManager.addTask(self.task["log"])
+        base_layer = self.dlg.state["layerComboBox_fuels"]
+        log_file = Path(self.args["OutFolder"], "LogFile.txt")
+        if log_file.is_file():
+            name='Ignition_Points'
+            self.task[name] = after_logFile(name, self.dlg, self.iface, nlog, log_file, base_layer, self.plugin_dir)
+            self.taskManager.addTask(self.task[name])
         else:
             nlog(
                 title="After Simulation",
@@ -1293,7 +1277,6 @@ class fire2amClass:
                 text="Messages found!",
                 level=3,
             )
-
             if self.dlg.state["checkBox_betweennessCentrality"]:
                 nlog(
                     title="After Simulation",
@@ -1328,21 +1311,6 @@ class fire2amClass:
                     self.dlg.state["layerComboBox_pv"],
                 )
                 self.taskManager.addTask(self.task[name])
-
-    def on_finished(self, exception, value=None):
-        """default finish qgs task"""
-        if not exception:
-            if value:
-                self.iface.messageBar().pushMessage(f"task finished & returned: {value}")
-            else:
-                self.iface.messageBar().pushMessage("task finished")
-        else:
-            self.iface.messageBar().pushMessage(str(exception))
-
-    def ui_addVectorLayer(self, geopackage, layerName, styleName):
-        """load a layer"""
-        vectorLayer = self.iface.addVectorLayer(str(geopackage) + "|layername=" + layerName, layerName, "ogr")
-        vectorLayer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + styleName))
 
     def slot_run_after(self):
         """TODO test
