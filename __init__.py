@@ -25,9 +25,8 @@
 from importlib.util import find_spec
 from pathlib import Path
 
-from pip import main as pip_main
 
-TAG = 'fire2am'
+from pip import main as pip_main
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
