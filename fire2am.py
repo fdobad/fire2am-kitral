@@ -81,7 +81,7 @@ from qgis.PyQt.QtCore import (QCoreApplication, QProcess, QSettings, QTimer,
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QDoubleSpinBox, QSpinBox
 
-from . import TAG, fire2a_checks
+from . import fire2a_checks
 from .fire2am_argparse import fire2amClassDialogArgparse
 from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
                                after_downstream_protection_value,
@@ -95,6 +95,8 @@ from .img.resources import *  # pylint: disable=wildcard-import, unused-wildcard
 from .ParseInputs2 import Parser2
 from .qgis_utils import (check_gdal_driver_name, checkLayerPoints,
                          matchPoints2Raster)
+from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
+
 
 # For debugging
 # import pdb
@@ -340,6 +342,7 @@ class fire2amClass:
             self.first_start_dialog = False
             self.dlg = fire2amClassDialog()
             nlog.set_qgsMessageBar(self.dlg.msgBar)
+            self.dlg.set_nlog(nlog)
             self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
@@ -442,7 +445,6 @@ class fire2amClass:
                 name = "check_weather_folder_bkgd"
                 self.task[name] = check_weather_folder_bkgd(name, self.dlg, wfolder)
                 self.taskManager.addTask(self.task[name])
-        self.dlg.setup_tables()
 
     def connect_slots(self):
         """main"""
@@ -1185,7 +1187,6 @@ class fire2amClass:
             )
             return
         # logFile for: ignition points
-        baseLayer = self.dlg.state["layerComboBox_fuels"]
         base_layer = self.dlg.state["layerComboBox_fuels"]
         log_file = Path(self.args["OutFolder"], "LogFile.txt")
         if log_file.is_file():
@@ -1200,6 +1201,7 @@ class fire2amClass:
                 to_bar=True,
             )
         """ Grids """
+        self.dlg.destroy_tables()
         if Path(self.args["OutFolder"], "Grids").is_dir():
             nlog(
                 title="After Simulation",
@@ -1265,7 +1267,7 @@ class fire2amClass:
                     title="After Simulation",
                     text="Launching betweennessCentrality task!",
                 )
-                name = "betweennessCentrality"
+                name = "betweenness_centrality"
                 self.task[name] = after_betweenness_centrality(
                     name,
                     self.iface,

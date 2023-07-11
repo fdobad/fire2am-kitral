@@ -12,7 +12,7 @@ import sys, pickle
 import pyperclip
 import os.path
 from .fire2am_utils import safe_cast_ok, get_params, log
-from . import TAG
+from .fire2am_CONSTANTS import TAG
 from .ParseInputs2 import Parser2
 
 class fire2amClassDialogArgparse(QtWidgets.QDialog):

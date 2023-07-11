@@ -7,7 +7,7 @@ import os
 from qgis.gui import QgsMessageBar
 
 '''CONSTANTS'''
-from . import TAG
+from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
 
 
 ''' 
@@ -191,10 +191,7 @@ def get_grouped_parser(parser):
 
     return args, groups
 
-import logging
-logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
-#logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s' ,datefmt='%Y-%m-%d %H:%M:%S')
-logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
+
 from qgis.core import Qgis, QgsMessageLog
 def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
     '''
@@ -221,7 +218,6 @@ def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
         args = ' '.join(tmp)
 
     if level == 0:
-        logging.debug( plugin+pre+args)
         QgsMessageLog.logMessage( 'DEBUG '+pre+args, plugin, level=Qgis.Info) 
         if msgBar:
             if duration:
@@ -230,7 +226,6 @@ def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
                 msgBar.pushMessage( pre+' DEBUG ', args, level=Qgis.Info)
     elif level == 1:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Info) 
-        logging.info( plugin+pre+args)
         if msgBar:
             if duration:
                 msgBar.pushMessage( pre, args, level=Qgis.Info, duration=duration)
@@ -238,7 +233,6 @@ def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
                 msgBar.pushMessage( pre, args, level=Qgis.Info)
     elif level == 2:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Warning) 
-        logging.warning( plugin+pre+args)
         if msgBar:
             if duration:
                 msgBar.pushMessage( pre, args, level=Qgis.Warning, duration=duration)
@@ -246,7 +240,6 @@ def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
                 msgBar.pushMessage( pre, args, level=Qgis.Warning)
     elif level == 3:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Critical) 
-        logging.critical( plugin+pre+args)
         if msgBar:
             if duration:
                 msgBar.pushMessage( pre, args, level=Qgis.Critical, duration=duration)
@@ -254,7 +247,6 @@ def log(*args, pre='', level=1, plugin=TAG, msgBar=None, duration=None):
                 msgBar.pushMessage( pre, args, level=Qgis.Critical)
     elif level == 4:
         QgsMessageLog.logMessage( pre+args, plugin, level=Qgis.Success) 
-        logging.info( plugin+'success '+pre+args)
         if msgBar:
             if duration:
                 msgBar.pushMessage( pre, args, level=Qgis.Success, duration=duration)

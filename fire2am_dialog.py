@@ -28,6 +28,10 @@ import io
 import os
 from multiprocessing import cpu_count
 
+import logging
+logger = logging.getLogger(__name__)
+logger.info('test from fire2am_dialog')
+
 import numpy as np
 from pandas import DataFrame
 from qgis.core import Qgis, QgsMessageLog
@@ -37,8 +41,8 @@ from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
 from scipy import stats
 
-from . import TAG
 from .fire2am_utils import MatplotlibFigures, PandasModel
+from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "fire2am_dialog_base.ui"))
@@ -72,8 +76,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layout().addWidget(self.msgBar)  # at the end: .insertRow . see qformlayout
         self.PandasModel = PandasModel
         self.plt = MatplotlibFigures(parent=parent, graphicsView=self.graphicsView)
-        self.stats.installEventFilter(self)
-        self.statsdf = None
+        # self.stats.installEventFilter(self)
         self.state = {}
         self.updateState()
         self.args = {}
@@ -82,32 +85,44 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         }
         self.init_default_values()
         self.pushButton_windRandomize.pressed.connect(self.slot_windRandomize)
-        self.tables = {}
+        self.table = {}
         self.df = {}
         self.update_tables()
+        self.nlog = None
+
+    def set_nlog(self, nlog):
+        self.nlog = nlog
 
     def update_tables(self):
-        self.tables.update(
+        self.table.update(
             {o.objectName(): o for o in self.findChildren(QtWidgets.QTableView, options=Qt.FindChildrenRecursively)}
         )
-        # qlog(self.tables)
+        logger.debug(f"update_tables, tables: {self.table}")
 
-    def update_data(self, name, df, **kwargs):
-        assert name in self.tables.keys()
-        old = self.dlg.df[name]
-        df["Index"] = df.index
-        df = concat((old, df), kwargs)
-        self.dlg.add_data(name, df)
-        # qlog(f'update {name}:{df}')
+    def add_col_to_stats(self, stat_name: str, column: list) -> None:
+        """describe = stats.describe(data,axis=0)
+        dlg.table[stats][stat_name] = ['stat_name','units',*describe]
+        """
+        self.nlog(title='dlg',text=f"add_col_to_stats stat_name:{stat_name}, column:{column}")
+        self.df["Stats"][stat_name] = column
+        self.nlog(title='dlg',text=f"add_col_to_stats df:{self.df['Stats']}")
+        self.table["Stats"].setModel(self.PandasModel(self.df["Stats"]))
+        logger.debug(f"add_col_to_stats, tables: {self.table}")
 
-    def add_data(self, name, df):
-        self.df[name] = df
-        df["Index"] = df.index
-        self.tables[name].setModel(PandasModel(df))
-        # qlog(f'add {name}:{df}')
+    def add_row_to_table(self, table: str, row: list) -> None:
+        """ grid_names = ["nsim","ngrid", "burned"] + list(stats.describe([0, 0])._fields)
 
-    def add_table(self, name="hola"):
-        if name in self.tables:
+        dlg.df[table].loc[len(df)] = [name, burned, *grid_descr]
+        """
+        self.nlog(title='dlg',text=f"add_row_to_table table:{table}, row:{row}")
+        df = self.df[table]
+        df.loc[len(df)] = row
+        self.nlog(title='dlg',text=f"add_row_to_table df:{df}")
+        self.table[table].setModel(self.PandasModel(df))
+
+    def add_table(self, name: str, columns=None) -> None:
+        self.nlog(title='dlg',text=f"add_table name:{name} columns:{columns}")
+        if name in self.table:
             return
         widget = QtWidgets.QWidget()
         tableview = QtWidgets.QTableView(parent=widget)
@@ -118,17 +133,19 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         widget.layout().addWidget(tableview)
         widget.setToolTip(name)
         self.tabWidget_tables.addTab(widget, name)
-        self.tables[name] = tableview
+        self.table[name] = tableview
+        if name == "Stats":
+            self.df["Stats"] = STATS_BASE_DF.copy()
+            self.table["Stats"].setModel(self.PandasModel(self.df["Stats"]))
+        else:
+            self.df[name] = DataFrame(columns=columns)
+            #self.df[name] = DataFrame(index=[0])
+            #self.table[name].setModel(self.PandasModel(self.df[name]))
 
-    def setup_tables(self):
+    def destroy_tables(self):
         self.update_tables()
-        for k, v in self.tables.items():
+        for k, v in self.table.items():
             v.destroy()
-        self.add_table("Stats")
-        st = stats.describe([0, 1])
-        df = DataFrame(("Name", *st._fields), index=("Name", *st._fields), columns=["Attributes"])
-        self.statsdf = df
-        self.stats.setModel(self.PandasModel(df))
 
     def updateState(self):
         """for widgets put their state, value, layer or filepath into a self.state dict

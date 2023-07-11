@@ -21,9 +21,9 @@ from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import QVariant
 # pylint: enable=no-name-in-module
 # plugin
+from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
 from .extras.downstream_protection_value import digraph_from_messages, shortest_propagation_tree, dpv_maskG, get_flat_pv
-from .fire2am_utils import log
-from . import fire2a_checks, TAG
+from . import fire2a_checks
 from .qgis_utils import (array2rasterFloat32, array2rasterInt16, id2xy,
                          matchRasterCellIds2points, mergeVectorLayers,
                          rasterRenderInterpolatedPseudoColor, writeVectorLayer)
@@ -221,10 +221,10 @@ class after_ForestGrid(QgsTask):
         name_prefix = 'mean_' if len(self.sim_num) > 1 else ''
         layerName = name_prefix + self.layerName
         array2rasterFloat32( meanData, layerName, self.out_gpkg, self.extent, self.crs, nodata = 0.0)
-        st = stats.describe( meanData, axis=None)
-        df = DataFrame( (layerName,*st), index=('Name',*st._fields), columns=[layerName])
+        stat = stats.describe( meanData, axis=None)
+        stat_col = [layerName,'probability',*stat]
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
-        return {'result':True, 'description':task.description(), 'df':df, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':layerName }
+        return {'result':True, 'description':task.description(), 'stat_col':stat_col, 'iface':self.iface, 'dlg':self.dlg, 'out_gpkg':self.out_gpkg, 'layerName':layerName }
 
     def sub_StoreFireSim(self, task, s, tg, ii, nu):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -232,6 +232,7 @@ class after_ForestGrid(QgsTask):
         # TODO task.setProgress(s/self.total*50+50)
         task.setProgress(50)
         #TODO on next line:datetime inverted with dt[::-1]
+        stat_row = []
         for i,(nsim,ngrid) in zip(ii,nu):
             if not self.data_isZeros[i]:
                 layerName = self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum)
@@ -242,11 +243,10 @@ class after_ForestGrid(QgsTask):
                     return {'result':False}
                 # new df
                 describe_result = stats.describe(self.data[i], axis=None)
-                df = DataFrame(describe_result, index=describe_result._fields).T
-                df['burned'] = self.data[i].sum()
-                df.rename({0:f's{nsim}_p{ngrid}'},inplace=True)
-                self.df = concat((self.df,df))
-        return {'result':True, 'description':task.description(), 'df':self.df, 'dlg':self.dlg}
+                burned = self.data[i].sum()
+                stat_row += [nsim, ngrid, burned, *describe_result]
+
+        return {'result':True, 'description':task.description(), 'stat_row':stat_row, 'dlg':self.dlg}
 
     def sub_FireEvolution(self, task, s, tg, ii, nu, dt, mergedName):
         QgsMessageLog.logMessage(task.description()+' bg Started ', MESSAGE_CATEGORY, Qgis.Info)
@@ -254,6 +254,7 @@ class after_ForestGrid(QgsTask):
         # TODO task.setProgress(s/self.total*50+50)
         task.setProgress(50)
         #TODO on next line:datetime inverted with dt[::-1]
+        stat_row = []
         for i,(nsim,ngrid),timestamp in zip(ii,nu,dt[::-1]):
             if not self.data_isZeros[i]:
                 evolayer = self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum)
@@ -265,10 +266,8 @@ class after_ForestGrid(QgsTask):
                     return {'result':False}
                 # new df
                 describe_result = stats.describe(self.data[i], axis=None)
-                df = DataFrame(describe_result, index=describe_result._fields).T
-                df['burned'] = self.data[i].sum()
-                df.rename({0:f's{nsim}_p{ngrid}'},inplace=True)
-                self.df = concat((self.df,df))
+                burned = self.data[i].sum()
+                stat_row += [nsim, ngrid, burned, *describe_result]
         if tg > 1:
             #QgsMessageLog.logMessage(task.description()+' tg>1 1', MESSAGE_CATEGORY, Qgis.Info)
             polys=[ str(self.vout_gpkg)+'|layername='+self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum) \
@@ -278,7 +277,7 @@ class after_ForestGrid(QgsTask):
             mergeVectorLayers( polys, str(self.evout_gpkg), mergedName )
             #QgsMessageLog.logMessage(task.description()+' tg>1 2', MESSAGE_CATEGORY, Qgis.Info)
         QgsMessageLog.logMessage(task.description()+' bg Ended', MESSAGE_CATEGORY, Qgis.Info)
-        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'df':self.df, 'vout_gpkg':self.evout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
+        return {'result':True, 'description':task.description(), 'iface':self.iface, 'dlg':self.dlg, 'stat_row':stat_row, 'vout_gpkg':self.evout_gpkg, 'mergedName':mergedName, 'plugin_dir':self.plugin_dir}
 
 def after_ForestGrid_meanFireScar_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Started', MESSAGE_CATEGORY, Qgis.Info)
@@ -291,12 +290,11 @@ def after_ForestGrid_meanFireScar_finished(exception, result):
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            # add to stats table
-            bf = result['dlg'].statsdf
-            df = concat((bf,result['df']), axis=1)
-            result['dlg'].statsdf = df
-            result['dlg'].stats.setModel(result['dlg'].PandasModel(df))
-            QgsMessageLog.logMessage(result['description']+f' done ui update {type(result["dlg"])} {type(result["iface"])}', MESSAGE_CATEGORY, Qgis.Info)
+
+            result["dlg"].add_table('Stats')
+            result["dlg"].add_col_to_stats(result['layerName'], result['stat_col'])
+
+            QgsMessageLog.logMessage(result['description']+f" done table stat update {result['stat_col']}", MESSAGE_CATEGORY, Qgis.Info)
     else:
         QgsMessageLog.logMessage(result['description']+' Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
@@ -309,9 +307,9 @@ def after_ForestGrid_StoreFireSim_finished(exception, result):
             QgsMessageLog.logMessage(result['description']+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
         else:
             QgsMessageLog.logMessage(result['description']+' Finished w/result %s'%result['result'], MESSAGE_CATEGORY, Qgis.Info)
-            if 'FireScar[px]' not in result['dlg'].tables:
-                result['dlg'].add_table('FireScar[px]')
-            result['dlg'].add_data('FireScar[px]',result['df'])
+            result["dlg"].add_table(result['layerName'], GRID_NAMES)
+            for row in result['stat_row']:
+                result["dlg"].add_row_to_table(result['layerName'], row)
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
@@ -328,9 +326,10 @@ def after_ForestGrid_FireEvolution_finished(exception, result):
             vectorLayer = result['iface'].addVectorLayer( str(result['vout_gpkg'])+'|layername='+result['mergedName'], result['mergedName'], 'ogr')
             vectorLayer.loadNamedStyle( os_path_join( result['plugin_dir'], 'img'+sep+'Fire_Evolution_layerStyle.qml'))
             QgsMessageLog.logMessage(result['description']+' fg ui updated', MESSAGE_CATEGORY, Qgis.Info)
-            if 'FireScar[px]' not in result['dlg'].tables:
-                result['dlg'].add_table('FireScar[px]')
-            result['dlg'].add_data('FireScar[px]',result['df'])
+
+            result["dlg"].add_table(result['layerName'], GRID_NAMES)
+            for row in result['stat_row']:
+                result["dlg"].add_row_to_table(result['layerName'], row)
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
@@ -394,12 +393,6 @@ class after_asciiDir(QgsTask):
         if result:
             QgsMessageLog.logMessage(self.description()+' Got files w/result %s data shape %s'%(result, self.data.shape), MESSAGE_CATEGORY, Qgis.Info)
             # write mean raster
-            '''
-            if self.nsim>1:
-                meanData = np.mean( self.data, axis=0, dtype=np.float32)
-            else:
-                meanData  = self.data
-            '''
             meanData = np.mean( self.data, axis=0, dtype=np.float32)
             array2rasterFloat32( meanData, self.layerName, self.stat_gpkg, self.extent, self.crs, nodata = 0.0)
             ''' show layer '''
@@ -407,18 +400,14 @@ class after_asciiDir(QgsTask):
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            #log('shown... now storing rasters', pre=self.layerName, level=4, msgBar=self.dlg.msgBar)
-            # describe mean raster into table
-            st = stats.describe( meanData, axis=None)
-            #df = DataFrame( st, index=st._fields, columns=[self.layerName])
-            df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
-            # get current table add column, store, reset
-            bf = self.dlg.statsdf
-            df = concat([bf,df], axis=1)
-            self.dlg.statsdf = df
-            self.dlg.stats.setModel(self.dlg.PandasModel(df))
-            #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
-            # write all rasters to gpkg in subtask
+
+            describe_result = stats.describe( meanData, axis=None)
+            stat_col = [self.layerName,'unit',*describe_result]
+            self.dlg.add_table('Stats')
+            self.dlg.add_col_to_stats(self.layerName, stat_col)
+
+            QgsMessageLog.logMessage(f'WTF asciiDir! {self.dlg.table.keys()} {self.description()}', MESSAGE_CATEGORY, Qgis.Info)
+
             if self.nsim > 1:
                 self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)
                 QgsApplication.taskManager().addTask( self.subTask)
@@ -630,24 +619,24 @@ class after_logFile(QgsTask):
 class after_betweenness_centrality(QgsTask):
     def __init__(self, description, iface, dlg, args, folder_name, file_name, extent, crs, plugin_dir):
         super().__init__(description, QgsTask.CanCancel)
+        self.layer_name = description
         self.exception = None
         self.args = args
         self.directory = Path( self.args['OutFolder'], folder_name)
-        self.layer_name = description
         self.file_name = file_name
         self.gpkg = Path( self.args['OutFolder'], description+'.gpkg')
         self.dlg = dlg
         self.iface = iface
         self.extent = extent
         self.crs = crs
-        self.bc = None
         self.data = []
+        self.centrality_stats = None
         self.plugin_dir = plugin_dir
 
     def run(self):
         QgsMessageLog.logMessage(self.description()+' Started ',MESSAGE_CATEGORY, Qgis.Info)
         ''' get filelist '''
-        file_list = sorted( self.directory.glob( self.file_name+'[0-9]*.csv'))
+        file_list = [ f for f in self.directory.glob( self.file_name+'[0-9]*.csv') if f.stat().st_size > 0]
         file_string = ' '.join([ f.stem for f in file_list ])
         ''' sort by number '''
         sim_num = np.fromiter( re.findall( '([0-9]+)', file_string), dtype=int, count=len(file_list))
@@ -681,65 +670,45 @@ class after_betweenness_centrality(QgsTask):
 
         QgsMessageLog.logMessage(self.description()+' calculating betweenness_centrality k=int(5*sqrt(|G|))',MESSAGE_CATEGORY, Qgis.Info)
         # outputs {nodes:betweenness_centrality_float_value}
-        #checks for raise ValueError("Sample larger than population or is negative")
+        # checks for raise ValueError("Sample larger than population or is negative")
         ksample = np.min(( mdg.number_of_nodes(), int(5*np.sqrt(mdg.number_of_nodes()))))
         centrality = nx.betweenness_centrality(mdg, k=ksample, weight='weight')
-        #log(centrality, level=0)
 
-        QgsMessageLog.logMessage(self.description()+' building resulting layer',MESSAGE_CATEGORY, Qgis.Info)
+        QgsMessageLog.logMessage(self.description()+' building resulting layer & getting statistics',MESSAGE_CATEGORY, Qgis.Info)
 
         self.setProgress(0.9)
         layer = self.dlg.state['layerComboBox_fuels']
         W,H = layer.width(), layer.height()
-        centrality_xy = [ [*id2xy( key-1, W, H), value] for key,value in centrality.items() ]
         centrality_array = np.zeros((H,W), dtype=np.float32)
+        centrality_values = []
+        for key,value in centrality.items():
+            x,y = id2xy( key-1, W, H)
+            centrality_array[y,x]=value
+            centrality_values += [value]
 
-        self.layer_name='betweenness_centrality'
-        for x,y,v in centrality_xy:
-            centrality_array[y,x]=v
         array2rasterFloat32( centrality_array, self.layer_name, self.gpkg, self.extent, self.crs, nodata = 0.0)
-        QgsMessageLog.logMessage(self.description()+' foo ',MESSAGE_CATEGORY, Qgis.Info)
-        # TODO
-        # fix self.data = np.array(self.data)
-        # is it tuples inside ?
-        QgsMessageLog.logMessage(self.description()+' bar ',MESSAGE_CATEGORY, Qgis.Info)
+        self.centrality_stats = stats.describe(centrality_values, axis=None)
         return True
 
     def finished(self, result):
         if result:
             QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
-            #QgsMessageLog.logMessage(self.description()+' finished w/result %s data shape %s'%(result, self.data.shape), MESSAGE_CATEGORY, Qgis.Info)
-            ''' show layer '''
+            # show layer
             layer = self.iface.addRasterLayer('GPKG:'+str(self.gpkg)+':'+self.layer_name, self.layer_name)
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            '''
-            #log('shown... now storing rasters', pre=self.layerName, level=4, msgBar=self.dlg.msgBar)
-            # describe mean raster into table
-            st = stats.describe( meanData, axis=None)
-            #df = DataFrame( st, index=st._fields, columns=[self.layerName])
-            df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
-            # get current table add column, store, reset
-            bf = self.dlg.statdf
-            df = concat([bf,df], axis=1)
-            self.dlg.statsdf = df
-            self.dlg.stats.setModel(self.dlg.PandasModel(df))
-            #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
-            # write all rasters to gpkg in subtask
-            if self.nsim > 1:
-                self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)
-                QgsApplication.taskManager().addTask( self.subTask)
-            else:
-                rmtree(self.directory)
-                QgsMessageLog.logMessage(self.description()+' done', MESSAGE_CATEGORY, Qgis.Info)
-            '''
+            # show stats
+            stat_col = [self.layer_name,'adim',*self.centrality_stats]
+            self.dlg.add_table('Stats')
+            self.dlg.add_col_to_stats(self.layer_name, stat_col)
         else:
             if self.exception is None:
                 QgsMessageLog.logMessage(self.description()+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
             else:
                 QgsMessageLog.logMessage(self.description()+' Finished w/o result w exception %s'%self.exception, MESSAGE_CATEGORY, Qgis.Warning)
                 raise self.exception
+        QgsMessageLog.logMessage(self.description()+' finished end', MESSAGE_CATEGORY, Qgis.Info)
 
     def cancel(self):
         QgsMessageLog.logMessage(self.description()+' was canceled', MESSAGE_CATEGORY, Qgis.Info)
@@ -766,6 +735,7 @@ class after_downstream_protection_value(QgsTask):
         self.crs = fuel_layer.crs()
         self.extent = fuel_layer.extent()
         self.dpv = np.zeros(self.H*self.W)
+        self.dpv_stats = None
 
     def run(self):
         QgsMessageLog.logMessage(self.description()+' Started ',MESSAGE_CATEGORY, Qgis.Info)
@@ -787,46 +757,30 @@ class after_downstream_protection_value(QgsTask):
             treeG = shortest_propagation_tree(msgG, root)
             i2n = [n-1 for n in treeG] # TODO change to generator?
             mdpv = dpv_maskG(treeG, root, self.pv, i2n)
-            #TODO-1ok?
             self.dpv[i2n] += mdpv
             self.setProgress((i+1)/nsim*100)
             if self.isCanceled():
                 QgsMessageLog.logMessage(self.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                 return False
         self.dpv=self.dpv/nsim
-        QgsMessageLog.logMessage(f'{self.description()} creating raster',MESSAGE_CATEGORY, Qgis.Info)
-        #TODO nodata?
+        QgsMessageLog.logMessage(f'{self.description()} creating raster & describing statistics',MESSAGE_CATEGORY, Qgis.Info)
+        # TODO nodata == 0?
         array2rasterFloat32( self.dpv.reshape(self.H,self.W), self.layer_name, self.gpkg, self.extent, self.crs)
+        self.dpv_stats = stats.describe(self.dpv[self.dpv!=0.0], axis=None)
         return True
 
     def finished(self, result):
         if result:
             QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
-            ''' show layer '''
+            # show layer
             layer = self.iface.addRasterLayer('GPKG:'+str(self.gpkg)+':'+self.layer_name, self.layer_name)
             minValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Min).minimumValue
             maxValue = layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Max).maximumValue
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
-            '''
-            #log('shown... now storing rasters', pre=self.layerName, level=4, msgBar=self.dlg.msgBar)
-            # describe mean raster into table
-            st = stats.describe( meanData, axis=None)
-            #df = DataFrame( st, index=st._fields, columns=[self.layerName])
-            df = DataFrame( (self.layerName,*st), index=('Name',*st._fields), columns=[self.layerName])
-            # get current table add column, store, reset
-            bf = self.dlg.statdf
-            df = concat([bf,df], axis=1)
-            self.dlg.statsdf = df
-            self.dlg.stats.setModel(self.dlg.PandasModel(df))
-            #QgsMessageLog.logMessage(self.description()+' strdf %s'%(df), MESSAGE_CATEGORY, Qgis.Info)
-            # write all rasters to gpkg in subtask
-            if self.nsim > 1:
-                self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)
-                QgsApplication.taskManager().addTask( self.subTask)
-            else:
-                rmtree(self.directory)
-                QgsMessageLog.logMessage(self.description()+' done', MESSAGE_CATEGORY, Qgis.Info)
-            '''
+            # show stats
+            stat_col = [self.layer_name,'pv/fires',*self.dpv_stats]
+            self.dlg.add_table('Stats')
+            self.dlg.add_col_to_stats(self.layer_name, stat_col)
         else:
             if self.exception is None:
                 QgsMessageLog.logMessage(self.description()+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
