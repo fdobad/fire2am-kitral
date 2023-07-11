@@ -25,34 +25,31 @@
 """
 import csv
 import io
+import logging
 import os
 from multiprocessing import cpu_count
 
-import logging
-logger = logging.getLogger(__name__)
-logger.info('test from fire2am_dialog')
-
 import numpy as np
 from pandas import DataFrame
-from qgis.core import Qgis, QgsMessageLog
+from qgis.core import Qgis
 from qgis.gui import QgsFileWidget, QgsMapLayerComboBox, QgsMessageBar
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import QEvent, Qt
 from qgis.PyQt.QtGui import QKeySequence
 from scipy import stats
 
+from .fire2am_CONSTANTS import (GRID_EMPTY_DF, GRID_NAMES, STATS_BASE_DF,
+                                STATS_BASE_NAMES, STATS_DESCRIBE_NAMES, TAG)
 from .fire2am_utils import MatplotlibFigures, PandasModel
-from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "fire2am_dialog_base.ui"))
 
 """if Interactive (maybe comment PandasModel also)
     os.getcwd(), 'fire2am_dialog_base.ui'))
-    fr om qgis.core import QgsApplication
+    from qgis.core import QgsApplication
     app = QgsApplication([], True)
     dlg = fire2amClassDialog()
-
 """
 
 
@@ -76,7 +73,6 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layout().addWidget(self.msgBar)  # at the end: .insertRow . see qformlayout
         self.PandasModel = PandasModel
         self.plt = MatplotlibFigures(parent=parent, graphicsView=self.graphicsView)
-        # self.stats.installEventFilter(self)
         self.state = {}
         self.updateState()
         self.args = {}
@@ -97,7 +93,6 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.table.update(
             {o.objectName(): o for o in self.findChildren(QtWidgets.QTableView, options=Qt.FindChildrenRecursively)}
         )
-        logger.debug(f"update_tables, tables: {self.table}")
 
     def add_col_to_stats(self, stat_name: str, column: list) -> None:
         """describe = stats.describe(data,axis=0)
@@ -107,21 +102,23 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         self.df["Stats"][stat_name] = column
         # self.nlog(title='dlg',text=f"add_col_to_stats df:{self.df['Stats']}")
         self.table["Stats"].setModel(self.PandasModel(self.df["Stats"]))
-        logger.debug(f"add_col_to_stats, tables: {self.table}")
 
     def add_row_to_table(self, table: str, row: list) -> None:
-        """ grid_names = ["nsim","ngrid", "burned"] + list(stats.describe([0, 0])._fields)
-
+        """grid_names = ["nsim","ngrid", "burned"] + list(stats.describe([0, 0])._fields)
         dlg.df[table].loc[len(df)] = [name, burned, *grid_descr]
         """
-        #self.nlog(title='dlg',text=f"add_row_to_table table:{table}, row:{row}")
+        # self.nlog(title='dlg',text=f"add_row_to_table table:{table}, row:{row}")
         df = self.df[table]
         df.loc[len(df)] = row
-        #self.nlog(title='dlg',text=f"add_row_to_table df:{df}")
+        # self.nlog(title='dlg',text=f"add_row_to_table df:{df}")
         self.table[table].setModel(self.PandasModel(df))
 
     def add_table(self, name: str, columns=None) -> None:
-        self.nlog(title='dlg',text=f"add_table name:{name} columns:{columns}")
+        """ This method adds a table view and a DatFrame to the dialog.
+        recieves the table name and a optional columns list
+        ONLY 'Stats' table is created with no columns, else fails!
+        """
+        self.nlog(title="dlg", text=f"add_table name:{name} columns:{columns}")
         if name in self.table:
             return
         widget = QtWidgets.QWidget()
@@ -139,8 +136,8 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
             self.table["Stats"].setModel(self.PandasModel(self.df["Stats"]))
         else:
             self.df[name] = DataFrame(columns=columns)
-            #self.df[name] = DataFrame(index=[0])
-            #self.table[name].setModel(self.PandasModel(self.df[name]))
+            # self.df[name] = DataFrame(index=[0])
+            # self.table[name].setModel(self.PandasModel(self.df[name]))
 
     def destroy_tables(self):
         self.update_tables()
@@ -255,8 +252,4 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         return
     scrap init
         self.stats.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
-
-def qlog(msg, level=Qgis.Info):
-    QgsMessageLog.logMessage(str(msg), TAG+'_dialog', level)
-
     """
