@@ -87,6 +87,8 @@ from .fire2am_bkgdTask import (after_asciiDir, after_betweenness_centrality,
                                after_downstream_protection_value,
                                after_ForestGrid, after_logFile,
                                check_weather_folder_bkgd)
+from .fire2am_CONSTANTS import (GRID_EMPTY_DF, GRID_NAMES, STATS_BASE_DF,
+                                STATS_BASE_NAMES, STATS_DESCRIBE_NAMES, TAG)
 from .fire2am_dialog import fire2amClassDialog
 from .fire2am_utils import check as fdoCheck
 from .fire2am_utils import get_params, nlog
@@ -95,8 +97,6 @@ from .img.resources import *  # pylint: disable=wildcard-import, unused-wildcard
 from .ParseInputs2 import Parser2
 from .qgis_utils import (check_gdal_driver_name, checkLayerPoints,
                          matchPoints2Raster)
-from .fire2am_CONSTANTS import TAG, STATS_DESCRIBE_NAMES, STATS_BASE_NAMES, STATS_BASE_DF, GRID_NAMES, GRID_EMPTY_DF
-
 
 # For debugging
 # import pdb
@@ -1239,13 +1239,14 @@ class fire2amClass:
             "CrownFire_FuelConsumptionRatio",
             "CrownFire_Scar",
         ]
+        units = ["m", "kW/m", "m/min", "fraction", "bool"]
         """ background tasks """
         # TODO CrownFire is bool but loaded as float32: modify or create proper qgsTask
-        for do, dn, fn, ln in zip(doit, dirNames, fileNames, layerNames):
+        for do, dn, fn, ln, un in zip(doit, dirNames, fileNames, layerNames, units):
             if do:
                 if Path(self.args["OutFolder"], dn).is_dir():
                     self.task[ln] = after_asciiDir(
-                        ln, self.iface, self.dlg, self.args, dn, fn, ln, self.extent, self.crs
+                        ln, self.iface, self.dlg, self.args, dn, fn, ln, un, self.extent, self.crs
                     )
                     self.taskManager.addTask(self.task[ln])
                 else:
@@ -1298,7 +1299,7 @@ class fire2amClass:
                 self.taskManager.addTask(self.task[name])
 
     def slot_run_after(self):
-        """ processes an output folder
+        """processes an output folder
         may delete you files! backup first
         input & output folder must be set on the args dialog first
         """
