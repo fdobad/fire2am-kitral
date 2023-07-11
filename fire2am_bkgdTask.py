@@ -336,7 +336,7 @@ def after_ForestGrid_FireEvolution_finished(exception, result):
     QgsMessageLog.logMessage(result['description']+' fg Ended', MESSAGE_CATEGORY, Qgis.Info)
 
 class after_asciiDir(QgsTask):
-    def __init__(self, description, iface, dlg, args, dirName, fileName, layerName, extent, crs):
+    def __init__(self, description, iface, dlg, args, dirName, fileName, layerName, unit_name, extent, crs):
         super().__init__(description, QgsTask.CanCancel)
         self.exception = None
         self.args = args
@@ -346,6 +346,7 @@ class after_asciiDir(QgsTask):
         self.directory = Path( self.args['OutFolder'], self.dirName)
         self.fileName = fileName
         self.layerName = layerName
+        self.unit_name = unit_name
         self.sims_gpkg =  self.args['OutFolder'] / (layerName+'_sims.gpkg')
         self.stat_gpkg =  self.args['OutFolder'] / (layerName+'.gpkg')
         self.extent = extent
@@ -402,7 +403,7 @@ class after_asciiDir(QgsTask):
             rasterRenderInterpolatedPseudoColor(layer, minValue, maxValue)
 
             describe_result = stats.describe( meanData, axis=None)
-            stat_col = [self.layerName,'unit',*describe_result]
+            stat_col = [self.layerName, self.unit_name, *describe_result]
             self.dlg.add_table('Stats')
             self.dlg.add_col_to_stats(self.layerName, stat_col)
 

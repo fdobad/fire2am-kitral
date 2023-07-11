@@ -118,7 +118,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         recieves the table name and a optional columns list
         ONLY 'Stats' table is created with no columns, else fails!
         """
-        self.nlog(title="dlg", text=f"add_table name:{name} columns:{columns}")
+        #self.nlog(title="dlg", text=f"add_table name:{name} columns:{columns}")
         if name in self.table:
             return
         widget = QtWidgets.QWidget()
