@@ -25,8 +25,8 @@
 from importlib.util import find_spec
 from pathlib import Path
 
-
 from pip import main as pip_main
+
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -35,21 +35,23 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
-    #modules = Path(Path.cwd(),'requirements_import_names.txt').read_text().split()
-    modules = Path(Path(__file__).parent,'requirements_import_names.txt').read_text().split()
-    distributions = Path(Path(__file__).parent,'requirements.txt').read_text().split()
-    error=False
-    not_found=[]
-    for mod,dist in zip(modules,distributions):
+    # modules = Path(Path.cwd(),'requirements_import_names.txt').read_text().split()
+    modules = Path(Path(__file__).parent, "requirements_import_names.txt").read_text().split()
+    distributions = Path(Path(__file__).parent, "requirements.txt").read_text().split()
+    error = False
+    not_found = []
+    for mod, dist in zip(modules, distributions):
         if find_spec(mod):
             pass
         else:
-            not_found+=[mod]
-            error=True
-            pip_main(['install', dist])
+            not_found += [mod]
+            error = True
+            pip_main(["install", dist])
     if error:
-        from .err_dialog import ErrDialog 
-        return ErrDialog(iface,not_found)
+        from .err_dialog import ErrDialog
+
+        return ErrDialog(iface, not_found)
     #
     from .fire2am import fire2amClass
+
     return fire2amClass(iface)
