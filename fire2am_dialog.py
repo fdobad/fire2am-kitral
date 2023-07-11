@@ -103,9 +103,9 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         """describe = stats.describe(data,axis=0)
         dlg.table[stats][stat_name] = ['stat_name','units',*describe]
         """
-        self.nlog(title='dlg',text=f"add_col_to_stats stat_name:{stat_name}, column:{column}")
+        # self.nlog(title='dlg',text=f"add_col_to_stats stat_name:{stat_name}, column:{column}")
         self.df["Stats"][stat_name] = column
-        self.nlog(title='dlg',text=f"add_col_to_stats df:{self.df['Stats']}")
+        # self.nlog(title='dlg',text=f"add_col_to_stats df:{self.df['Stats']}")
         self.table["Stats"].setModel(self.PandasModel(self.df["Stats"]))
         logger.debug(f"add_col_to_stats, tables: {self.table}")
 
@@ -114,10 +114,10 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
 
         dlg.df[table].loc[len(df)] = [name, burned, *grid_descr]
         """
-        self.nlog(title='dlg',text=f"add_row_to_table table:{table}, row:{row}")
+        #self.nlog(title='dlg',text=f"add_row_to_table table:{table}, row:{row}")
         df = self.df[table]
         df.loc[len(df)] = row
-        self.nlog(title='dlg',text=f"add_row_to_table df:{df}")
+        #self.nlog(title='dlg',text=f"add_row_to_table df:{df}")
         self.table[table].setModel(self.PandasModel(df))
 
     def add_table(self, name: str, columns=None) -> None:

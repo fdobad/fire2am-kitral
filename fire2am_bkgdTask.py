@@ -241,10 +241,11 @@ class after_ForestGrid(QgsTask):
                 if task.isCanceled():
                     QgsMessageLog.logMessage(task.description()+' is Canceled', MESSAGE_CATEGORY, Qgis.Warning)
                     return {'result':False}
-                # new df
+                # add stat
                 describe_result = stats.describe(self.data[i], axis=None)
                 burned = self.data[i].sum()
-                stat_row += [nsim, ngrid, burned, *describe_result]
+                stat_row += [[nsim, ngrid, burned, *describe_result]]
+                # QgsMessageLog.logMessage(task.description()+f' stat_row-1:{stat_row[-1]}', MESSAGE_CATEGORY, Qgis.Critical)
 
         return {'result':True, 'description':task.description(), 'stat_row':stat_row, 'dlg':self.dlg}
 
@@ -267,7 +268,7 @@ class after_ForestGrid(QgsTask):
                 # new df
                 describe_result = stats.describe(self.data[i], axis=None)
                 burned = self.data[i].sum()
-                stat_row += [nsim, ngrid, burned, *describe_result]
+                stat_row += [[nsim, ngrid, burned, *describe_result]]
         if tg > 1:
             #QgsMessageLog.logMessage(task.description()+' tg>1 1', MESSAGE_CATEGORY, Qgis.Info)
             polys=[ str(self.vout_gpkg)+'|layername='+self.layerName+'_'+str(nsim).zfill(self.width1stNum)+'_'+str(ngrid).zfill(self.width2ndNum) \
@@ -307,9 +308,9 @@ def after_ForestGrid_StoreFireSim_finished(exception, result):
             QgsMessageLog.logMessage(result['description']+' Finished w/o result w/o exception', MESSAGE_CATEGORY, Qgis.Warning)
         else:
             QgsMessageLog.logMessage(result['description']+' Finished w/result %s'%result['result'], MESSAGE_CATEGORY, Qgis.Info)
-            result["dlg"].add_table(result['layerName'], GRID_NAMES)
+            result["dlg"].add_table('FireScar[px]', GRID_NAMES)
             for row in result['stat_row']:
-                result["dlg"].add_row_to_table(result['layerName'], row)
+                result["dlg"].add_row_to_table('FireScar[px]', row)
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
@@ -326,10 +327,9 @@ def after_ForestGrid_FireEvolution_finished(exception, result):
             vectorLayer = result['iface'].addVectorLayer( str(result['vout_gpkg'])+'|layername='+result['mergedName'], result['mergedName'], 'ogr')
             vectorLayer.loadNamedStyle( os_path_join( result['plugin_dir'], 'img'+sep+'Fire_Evolution_layerStyle.qml'))
             QgsMessageLog.logMessage(result['description']+' fg ui updated', MESSAGE_CATEGORY, Qgis.Info)
-
-            result["dlg"].add_table(result['layerName'], GRID_NAMES)
+            result["dlg"].add_table('FireScar[px]', GRID_NAMES)
             for row in result['stat_row']:
-                result["dlg"].add_row_to_table(result['layerName'], row)
+                result["dlg"].add_row_to_table('FireScar[px]', row)
     else:
         QgsMessageLog.logMessage(result['description']+' fg Finished w exception %s'%exception, MESSAGE_CATEGORY, Qgis.Warning)
         raise exception
