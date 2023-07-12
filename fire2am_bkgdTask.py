@@ -481,19 +481,20 @@ def raster2vector_wTimestamp( layerName, rout_gpkg, vout_gpkg, extent, crs, dt):
     QgsVectorFileWriter.writeAsVectorFormat( vectorLayer, str(vout_gpkg), options)
 
 class check_weather_folder_bkgd(QgsTask):
-    def __init__(self, description, dlg, directory):
+    def __init__(self, description, directory, dlg, nlog):
         super().__init__(description, QgsTask.CanCancel)
         self.exception = None
         self.directory = Path(directory)
         self.finished = False
         self.dlg = dlg
         self.nweathers = None
+        self.nlog = nlog
     def run(self):
         try:
             self.setProgress(0)
             QgsMessageLog.logMessage(self.description()+' run started', MESSAGE_CATEGORY, Qgis.Info)
             if not self.directory.is_dir():
-                log(f'Is not a directory: {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                self.nlog(text=f'Is not a directory: {self.directory}', title='Bad Weather Folder!', level=2, to_bar=True)
                 return False
             if file_list:= list(self.directory.glob('Weather[0-9]*.csv')):
                 self.nweathers = len(file_list)
@@ -505,10 +506,10 @@ class check_weather_folder_bkgd(QgsTask):
                 numbers = numbers[asort]
                 for i,afile in enumerate(file_list):
                     if i+1 != numbers[i]:
-                        log(f'weather file {afile} not sequentially numerated {i+1} in {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                        self.nlog(text=f'weather file {afile} not sequentially numerated {i+1} in {self.directory}', title='Bad Weather Folder!', level=2, to_bar=True)
                         return False
                     if not fire2a_checks.weather_file(str(afile)): #, quick=True
-                        log(f'bad weather file {afile} in {self.directory}', pre='Bad Weather Folder!', level=2, msgBar=self.dlg.msgBar)
+                        self.nlog(text=f'bad weather file {afile} in {self.directory}', title='Bad Weather Folder!', level=2, to_bar=True)
                         return False
                     if self.isCanceled():
                         QgsMessageLog.logMessage(self.description()+' run was canceled', MESSAGE_CATEGORY, Qgis.Warning)
@@ -527,7 +528,7 @@ class check_weather_folder_bkgd(QgsTask):
     def finished(self, result):
         if self.exception:
             QgsMessageLog.logMessage(self.description()+' Finished w exception %s'%self.exception, MESSAGE_CATEGORY, Qgis.Warning)
-            log(' Finished w exception %s'%self.exception, pre='Weathers Folder Check!', level=4, msgBar=self.dlg.msgBar)
+            self.nlog(' Finished w exception {self.exception}', title='Weathers Folder Check!', level=4, to_bar=True)
         elif result:
             QgsMessageLog.logMessage(self.description()+' finished w/result %s'%result, MESSAGE_CATEGORY, Qgis.Info)
             self.dlg.args['nweathers'] = self.nweathers
@@ -536,14 +537,14 @@ class check_weather_folder_bkgd(QgsTask):
             self.dlg.fileWidget_weatherFolder.blockSignals(True)
             self.dlg.fileWidget_weatherFolder.setFilePath( str(self.directory))
             self.dlg.fileWidget_weatherFolder.blockSignals(False)
-            log('Found in %s'%self.directory, pre='Weathers[1..%s].csv'%self.dlg.args['nweathers'], level=4, msgBar=self.dlg.msgBar)
+            self.nlog(text=f'Found in {self.directory}', title=f"Weathers[1..{self.dlg.args['nweathers']}].csv", level=4, to_bar=True)
         else:
             self.dlg.fileWidget_weatherFolder.blockSignals(True)
             self.dlg.args['nweathers'] = None
             self.dlg.fileWidget_weatherFolder.setFilePath( QgsProject().instance().absolutePath())
             self.dlg.fileWidget_weatherFolder.blockSignals(False)
             self.dlg.radioButton_weatherConstant.setChecked(True)
-            log('at %s'%self.directory, pre='Bad Weathers Folder!', level=2, msgBar=self.dlg.msgBar)
+            self.nlog(text=f'at {self.directory}', title='Bad Weathers Folder!', level=2, to_bar=True)
         self.finished = True
 
 class after_logFile(QgsTask):

@@ -443,7 +443,7 @@ class fire2amClass:
             wfolder = Path(apath, "Weathers")
             if wfolder.is_dir():
                 name = "check_weather_folder_bkgd"
-                self.task[name] = check_weather_folder_bkgd(name, self.dlg, wfolder)
+                self.task[name] = check_weather_folder_bkgd(name, wfolder, self.dlg, nlog)
                 self.taskManager.addTask(self.task[name])
 
     def connect_slots(self):
@@ -824,7 +824,7 @@ class fire2amClass:
                     duration=2,
                 )
                 return
-        self.task[name] = check_weather_folder_bkgd(name, self.dlg, directory)
+        self.task[name] = check_weather_folder_bkgd(name, directory, self.dlg, nlog)
         self.taskManager.addTask(self.task[name])
 
     def slot_fileWidget_weatherFile_fileChanged(self, afile):
