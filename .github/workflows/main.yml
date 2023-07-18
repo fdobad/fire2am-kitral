@@ -21,7 +21,7 @@ jobs:
          VERSION=${GITHUB_REF_NAME#v}
          echo "version is ${VERSION}"
          sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
-         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.iu
+         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.ui
 
     - name: git archive
       run: |
