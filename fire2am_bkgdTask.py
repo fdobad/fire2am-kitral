@@ -407,7 +407,7 @@ class after_asciiDir(QgsTask):
             self.dlg.add_table('Stats')
             self.dlg.add_col_to_stats(self.layerName, stat_col)
 
-            QgsMessageLog.logMessage(f'WTF asciiDir! {self.dlg.table.keys()} {self.description()}', MESSAGE_CATEGORY, Qgis.Info)
+            # QgsMessageLog.logMessage(f'WTF asciiDir! {self.dlg.table.keys()} {self.description()}', MESSAGE_CATEGORY, Qgis.Info)
 
             if self.nsim > 1:
                 self.subTask = QgsTask.fromFunction(self.description()+' store rasters', self.sub_run, on_finished=after_AsciiDir_sub_finished)

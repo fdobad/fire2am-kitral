@@ -917,10 +917,9 @@ class fire2amClass:
         else:
             args.pop("IgRadius")
         # 2c nsims logic
+        args["finalGrid"] = True
         if args["nsims"] == 1:
             args["grids"] = True
-        else:
-            args["finalGrid"] = True
         nlog(
             text="step 2",
             title="makeArgs",
