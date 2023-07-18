@@ -16,15 +16,19 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
-    - name: Zip Release
-      uses: TheDoctor0/zip-release@0.7.1
-      with:
-        type: 'zip'
-        filename: 'fire2am.zip'
-        exclusions: '*.git*'
+    - name: version bump
+      run: |
+         VERSION=${GITHUB_REF_NAME#v}
+         echo "version is ${VERSION}"
+         sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
+         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.iu
+
+    - name: git archive
+      run: |
+         git archive --format=zip --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.iu --output "fire2am_${{ github.ref_name }}.zip" HEAD
 
     - name: Create Release
       uses: ncipollo/release-action@v1.12.0
       with:
-        artifacts: 'fire2am.zip'
+        artifacts: "fire2am_${{ github.ref_name }}.zip"
         token: ${{ secrets.GITHUB_TOKEN }}
