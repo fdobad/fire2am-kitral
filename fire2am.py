@@ -158,7 +158,7 @@ class fire2amClass:
         self.H = None
 
         # QProcess
-        self.proc_dir = str(Path(self.plugin_dir, "C2FSB"))
+        self.proc_dir = str(Path(self.plugin_dir, "C2F"))
         self.proc_exe = "python3 main.py"
         self.simulation_process = None
         self.proc = None
@@ -291,7 +291,7 @@ class fire2amClass:
         ext = ""
         if plt_sys() == "Windows":
             ext = ".exe"
-        afile = Path(self.plugin_dir, "C2FSB", "Cell2FireC", "Cell2Fire" + ext)
+        afile = Path(self.plugin_dir, "C2F", "Cell2FireC", "Cell2Fire" + ext)
         if not afile.is_file():
             self.iface.messageBar().pushMessage(
                 f"{TAG}:", f"Cell2Fire{ext} binary not found! will not simulate", level=2, duration=0
@@ -346,7 +346,7 @@ class fire2amClass:
             self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
-            self.simulation_process = C2FSB(
+            self.simulation_process = C2F(
                 proc_dir=self.proc_dir, on_finished=self.after, plainTextEdit=self.dlg.plainTextEdit
             )
             self.check_binary()
@@ -567,7 +567,7 @@ class fire2amClass:
             level=0,
         )
         # fuel definition
-        fuel_file = "spain_lookup_table.csv"
+        fuel_file = "kitral_lookup_table.csv"
         copy(os.path.join(self.plugin_dir, fuel_file), self.args["InFolder"])
         # fuels layer
         copy(self.dlg.state["layerComboBox_fuels"].publicSource(), os.path.join(self.args["InFolder"], "fuels.asc"))
@@ -1359,7 +1359,7 @@ ProcessError = {
 }
 
 
-class C2FSB(QProcess):
+class C2F(QProcess):
     """fire simulation qprocess calls the c2fsb repo main.py"""
 
     def __init__(self, parent=None, proc_dir=None, on_finished=None, plainTextEdit=None):

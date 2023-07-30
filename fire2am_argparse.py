@@ -90,7 +90,7 @@ class fire2amClassDialogArgparse(QtWidgets.QDialog):
         hlayout.addWidget(self.label_directory)
         # fileWidget_directory
         self.fileWidget_directory = QgsFileWidget(storageMode=QgsFileWidget.StorageMode.GetDirectory)
-        self.fileWidget_directory.setFilePath(os.path.join(self.plugin_dir, "C2FSB"))
+        self.fileWidget_directory.setFilePath(os.path.join(self.plugin_dir, "C2F"))
         self.fileWidget_directory.setVisible(False)
         hlayout.addWidget(self.fileWidget_directory)
         # add hlayout
