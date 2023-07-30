@@ -1,7 +1,6 @@
 # vim
 .netrwhist
-*swp
-*swo
+*sw[pon]
 *~
 
 # Jupyter Notebook
