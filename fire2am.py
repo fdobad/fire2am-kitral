@@ -405,7 +405,7 @@ class fire2amClass:
         for lname, layer in layers_byName.items():
             if re.match("model.*asc", lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_fuels.setLayer(layer)
-                layer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + "fuelsSB_layerStyle.qml"))
+                layer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + "kitral_fuels_layerStyle.qml"))
                 layer.triggerRepaint()
             elif re.match("mdt.*asc", lname) and layer.type() == QgsMapLayerType.RasterLayer:
                 self.dlg.layerComboBox_elevation.setLayer(layer)
@@ -599,14 +599,14 @@ class fire2amClass:
             if project_name == "":
                 project_name = "untitled_project"
             nrows_width = len(str(nrows))
-            scenario = [project_name+str(i).zfill(nrows_width) for i in range(nrows)]
+            scenario = [project_name + str(i).zfill(nrows_width) for i in range(nrows)]
             dt = [(self.now + timedelta(hours=i)).isoformat(timespec="minutes") for i in range(nrows)]
             WD = [self.dlg.state["spinBox_windDirection"]] * nrows
             WS = [self.dlg.state["spinBox_windSpeed"]] * nrows
             TMP = [self.dlg.state["spinBox_airTemperature"]] * nrows
             RH = [self.dlg.state["spinBox_relativeHumidity"]] * nrows
             df = DataFrame(
-                np.vstack((scenario, dt, WS, WD, TMP, RH )).T,
+                np.vstack((scenario, dt, WS, WD, TMP, RH)).T,
                 columns=["Scenario", "datetime", "WS", "WD", "TMP", "RH"],
             )
             df.to_csv(os.path.join(self.args["InFolder"], "Weather.csv"), header=True, index=False)
@@ -734,7 +734,7 @@ class fire2amClass:
                     self.crs = None
             self.W = layer.width()
             self.H = layer.height()
-            layer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + "fuelsSB_layerStyle.qml"))
+            layer.loadNamedStyle(os.path.join(self.plugin_dir, "img" + sep + "kitral_fuels_layerStyle.qml"))
             layer.triggerRepaint()
             nlog(
                 title="fuel combobox",

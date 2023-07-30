@@ -188,7 +188,6 @@ def get_grouped_parser(parser):
             args[x['dest']] = x  
             args[x['dest']].pop( 'container')
             args[x['dest']].update({ 'group' : k})
-
     return args, groups
 
 
@@ -341,6 +340,18 @@ def fuel_lookuptable_colorconvert(afile = 'spain_lookup_table.csv'):
     for t in df.itertuples():
         print((t.r,t.g,t.b),hls_to_rgb(t.h,t.l,t.s),rgb_to_hls(t.r,t.g,t.b),(t.h,t.l,t.s))
         assert np.all( rgb_to_hls(t.r,t.g,t.b)==(t.h,t.l,t.s)) and np.all( (t.r,t.g,t.b)==hls_to_rgb(t.h,t.l,t.s))
+
+def fuel_lookuptable_csv2qml(afile = 'kitral_lookup_table.csv', qmlfile = 'qml_lookup_table.qml'):
+    """ convert csv to qml colorPalette section
+        printing results to stdout
+        TODO modify a qml file <colorPallete> section
+        columns : ['grid_value', 'export_value', 'descriptive_name', 'fuel_type', 'r', 'g', 'b', 'h', 's', 'l']
+    """
+    df = read_csv(afile)
+    print('<paletteEntry color="#ffffff" label="NA" alpha="0" value="0"/>')
+    for row in df.itertuples():
+        hex_color = rgb2hex_color(row.r,row.g,row.b)
+        print(f'<paletteEntry color="{hex_color}" label="{row.descriptive_name}" alpha="1" value="{row.grid_value}"/>')
 
 
 if __name__ == "__main__":
