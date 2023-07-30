@@ -13,7 +13,7 @@ from pandas.api.types import is_numeric_dtype
 
 # header = 'Scenario,datetime,WS,WD,FireScenario'
 # header.split(',')
-WEATHER_FILE_HEADER = ('datetime', 'WS', 'WD')
+WEATHER_FILE_HEADER = ('datetime', 'WS', 'WD', 'TMP', 'RH')
 WS = WEATHER_FILE_HEADER[1]
 WD = WEATHER_FILE_HEADER[2]
 

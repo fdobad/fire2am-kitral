@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>654</width>
-    <height>579</height>
+    <width>782</width>
+    <height>665</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Fire Simulator Analytics Management</string>
+   <string>Kitral Fire Simulator Analytics Management</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>4</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_landscape">
       <attribute name="title">
@@ -237,192 +237,11 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
        <string>Weather</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="3" column="0">
-        <widget class="QRadioButton" name="radioButton_weatherFolder">
-         <property name="text">
-          <string>Scenario folder</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QGroupBox" name="groupBox">
-         <property name="title">
-          <string>Wind direction (deg°) and speed (km/h) builder:</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_5">
-          <item row="2" column="2">
-           <widget class="QSlider" name="horizontalSlider_windSpeed">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>1</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>km/h</string>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksAbove</enum>
-            </property>
-            <property name="tickInterval">
-             <number>25</number>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="2">
-           <widget class="QSpinBox" name="spinBox_windSpeed">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-              <horstretch>1</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>km/h</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>200</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <spacer name="horizontalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="2" column="1">
-           <widget class="QDial" name="dial_windDirection">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>1</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string/>
-            </property>
-            <property name="maximum">
-             <number>359</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="notchTarget">
-             <double>90.000000000000000</double>
-            </property>
-            <property name="notchesVisible">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QSpinBox" name="spinBox_windDirection">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-              <horstretch>1</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-            <property name="maximum">
-             <number>359</number>
-            </property>
-            <property name="singleStep">
-             <number>6</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="3">
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item row="4" column="6">
-           <widget class="QSpinBox" name="spinBox_windConstLen">
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>999</number>
-            </property>
-            <property name="value">
-             <number>24</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="5" colspan="2">
-           <widget class="QPushButton" name="pushButton_windRandomize">
-            <property name="text">
-             <string>Randomize</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="5">
-           <widget class="QLabel" name="label_15">
-            <property name="text">
-             <string>Hrs</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="7" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_10">
          <property name="text">
           <string>Foliar Moisture Content
     Percentage 40...200%</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QRadioButton" name="radioButton_weatherConstant">
-         <property name="text">
-          <string>Constant</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Live &amp; Dead Fuel Moisture Content
-    Scenario 1..4</string>
          </property>
         </widget>
        </item>
@@ -436,6 +255,13 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
          </property>
          <property name="storageMode">
           <enum>QgsFileWidget::GetDirectory</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QRadioButton" name="radioButton_weatherFolder">
+         <property name="text">
+          <string>Scenario folder</string>
          </property>
         </widget>
        </item>
@@ -459,8 +285,24 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="4" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Emulate Wind Gusts.
+Coeficient of variation
+for (normal distribution)
+ Rate of Fire Spread</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_ROS_CV"/>
+       </item>
+       <item row="6" column="1">
         <widget class="QSpinBox" name="spinBox_fmc">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
          <property name="minimum">
           <number>40</number>
          </property>
@@ -472,30 +314,254 @@ On each simulation a uniform distribution will draw a point (cell in the grid)
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
-        <widget class="QDoubleSpinBox" name="doubleSpinBox_ROS_CV"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label">
+       <item row="0" column="0">
+        <widget class="QRadioButton" name="radioButton_weatherConstant">
          <property name="text">
-          <string>Emulate Wind Gusts.
-Coeficient of variation
-for (normal distribution)
- Rate of Fire Spread</string>
+          <string>Constant</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="QSpinBox" name="spinBox_scenario">
-         <property name="minimum">
-          <number>1</number>
+       <item row="0" column="1">
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Builder:</string>
          </property>
-         <property name="maximum">
-          <number>4</number>
-         </property>
-         <property name="value">
-          <number>3</number>
-         </property>
+         <layout class="QGridLayout" name="gridLayout_5">
+          <item row="5" column="2">
+           <widget class="QSpinBox" name="spinBox_airTemperature">
+            <property name="minimum">
+             <number>-10</number>
+            </property>
+            <property name="maximum">
+             <number>57</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::DefaultStepType</enum>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Air temperature °C</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>Wind direction (deg°)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QPushButton" name="pushButton_windRandomize">
+            <property name="text">
+             <string>Randomize</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="2">
+           <widget class="QSpinBox" name="spinBox_relativeHumidity">
+            <property name="maximum">
+             <number>123</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QSpinBox" name="spinBox_windConstLen">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+            <property name="value">
+             <number>24</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QSlider" name="horizontalSlider_windSpeed">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>km/h</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>123</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="tickPosition">
+             <enum>QSlider::NoTicks</enum>
+            </property>
+            <property name="tickInterval">
+             <number>25</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <widget class="QSpinBox" name="spinBox_windSpeed">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>km/h</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+            <property name="suffix">
+             <string/>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>123</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::DefaultStepType</enum>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>Total sim.periods</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>Relative humidity %</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QSlider" name="horizontalSlider_airTemperature">
+            <property name="minimum">
+             <number>-10</number>
+            </property>
+            <property name="maximum">
+             <number>57</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QSpinBox" name="spinBox_windDirection">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+            <property name="maximum">
+             <number>359</number>
+            </property>
+            <property name="singleStep">
+             <number>6</number>
+            </property>
+            <property name="value">
+             <number>27</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>Wind speed (km/h)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QSlider" name="horizontalSlider_relativeHumidity">
+            <property name="maximum">
+             <number>123</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QDial" name="dial_windDirection">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="maximum">
+             <number>359</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="value">
+             <number>27</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="invertedAppearance">
+             <bool>true</bool>
+            </property>
+            <property name="notchTarget">
+             <double>90.000000000000000</double>
+            </property>
+            <property name="notchesVisible">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -991,7 +1057,7 @@ Ask the fire2a team for access to the repo</string>
   </connection>
   <connection>
    <sender>horizontalSlider_windSpeed</sender>
-   <signal>valueChanged(int)</signal>
+   <signal>sliderMoved(int)</signal>
    <receiver>spinBox_windSpeed</receiver>
    <slot>setValue(int)</slot>
    <hints>
@@ -1018,6 +1084,70 @@ Ask the fire2a team for access to the repo</string>
     <hint type="destinationlabel">
      <x>580</x>
      <y>474</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSlider_airTemperature</sender>
+   <signal>sliderMoved(int)</signal>
+   <receiver>spinBox_airTemperature</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>509</x>
+     <y>289</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>671</x>
+     <y>289</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSlider_relativeHumidity</sender>
+   <signal>sliderMoved(int)</signal>
+   <receiver>spinBox_relativeHumidity</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>509</x>
+     <y>327</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>671</x>
+     <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinBox_relativeHumidity</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>horizontalSlider_relativeHumidity</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>671</x>
+     <y>327</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>509</x>
+     <y>327</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinBox_airTemperature</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>horizontalSlider_airTemperature</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>671</x>
+     <y>289</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>509</x>
+     <y>289</y>
     </hint>
    </hints>
   </connection>

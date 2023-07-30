@@ -80,7 +80,7 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
             o.objectName(): o for o in self.findChildren(QgsMapLayerComboBox, options=Qt.FindChildrenRecursively)
         }
         self.init_default_values()
-        self.pushButton_windRandomize.pressed.connect(self.slot_windRandomize)
+        # self.pushButton_windRandomize.pressed.connect(self.slot_windRandomize)
         self.table = {}
         self.df = {}
         self.update_tables()
@@ -224,10 +224,10 @@ class fire2amClassDialog(QtWidgets.QDialog, FORM_CLASS):
         )
 
     def slot_windRandomize(self):
-        WD = np.random.randint(0, 359)
-        WS = np.random.randint(1, 100)
-        self.spinBox_windDirection.setValue(WD)
-        self.spinBox_windSpeed.setValue(WS)
+        self.spinBox_windDirection.setValue(np.random.randint(0, 360))
+        self.spinBox_windSpeed.setValue(np.random.randint(0, 124))
+        self.spinBox_airTemperature.setValue(np.random.randint(-10, 58))
+        self.spinBox_relativeHumidity.setValue(np.random.randint(0, 124))
 
     """ TBD if user pastes tabular data into table
     def pasteSelection(self):

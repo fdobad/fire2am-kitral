@@ -343,7 +343,7 @@ class fire2amClass:
             self.dlg = fire2amClassDialog()
             nlog.set_qgsMessageBar(self.dlg.msgBar)
             self.dlg.set_nlog(nlog)
-            self.dlg.slot_windRandomize()
+            # self.dlg.slot_windRandomize()
             self.dlg.tabWidget.setCurrentIndex(0)
             self.first_start_setup()
             self.simulation_process = C2F(
@@ -595,17 +595,19 @@ class fire2amClass:
         # weather constant : read dial and slider to generate Weather.csv
         if self.dlg.state["radioButton_weatherConstant"]:
             nrows = self.dlg.state["spinBox_windConstLen"]
-            iname = QgsProject().instance().baseName()
-            if iname == "":
-                iname = "Jaime"
-            Instance = [iname] * nrows
-            FireScenario = [2] * nrows
+            project_name = QgsProject().instance().baseName()
+            if project_name == "":
+                project_name = "untitled_project"
+            nrows_width = len(str(nrows))
+            scenario = [project_name+str(i).zfill(nrows_width) for i in range(nrows)]
             dt = [(self.now + timedelta(hours=i)).isoformat(timespec="minutes") for i in range(nrows)]
             WD = [self.dlg.state["spinBox_windDirection"]] * nrows
             WS = [self.dlg.state["spinBox_windSpeed"]] * nrows
+            TMP = [self.dlg.state["spinBox_airTemperature"]] * nrows
+            RH = [self.dlg.state["spinBox_relativeHumidity"]] * nrows
             df = DataFrame(
-                np.vstack((Instance, dt, WD, WS, FireScenario)).T,
-                columns=["Instance", "datetime", "WD", "WS", "FireScenario"],
+                np.vstack((scenario, dt, WS, WD, TMP, RH )).T,
+                columns=["Scenario", "datetime", "WS", "WD", "TMP", "RH"],
             )
             df.to_csv(os.path.join(self.args["InFolder"], "Weather.csv"), header=True, index=False)
             nlog(
@@ -895,6 +897,8 @@ class fire2amClass:
         args.pop("windDirection")
         args.pop("windSpeed")
         args.pop("windConstLen")
+        args.pop("airTemperature")
+        args.pop("relativeHumidity")
         # 1 landscape canopy logic
         if any(
             [
