@@ -1,19 +1,26 @@
-# fire2am ~ fire 2 advanced analytics and management
+# Kitral fire2am : AAM : advanced analytics and management
 
-## 0. [Plugin users check documentation here](https://fdobad.github.io/doctest/)  
-(the one here at docs/ may be not uptodate)
+## Documentation
+The same folder is published as:
 
-## 1. What's here:
-- This repo is QGIS plugin root, strictly necessary files:  
-    ```
-    fire2am*
+    ./docs
+    https://fdobad.github.io/fire2am-kitral/
+
+## What's here:
+This repo is a QGIS plugin module, for development clone it as fire2am (drop the -kitral):
+
+     .local/share/QGIS/QGIS3/profiles/default/python/plugins/fire2am
+
+Contents:
+     ```
     __init__.py
+    fire2am*
     metadata.txt            <- plugin id
     qgis_utils.py
     ParseInputs2.py
     spain_lookup_table.csv
     img/                    <- ui resources
-    C2FSB/                  <-simulator binaries
+    C2F/                    <-simulator binaries
     ```
 
 - Extras
@@ -37,10 +44,10 @@
     Statspy_Grid.py
     ```
 
-# 2. Give us feedback
+## Give us feedback
 At the issues or directly to fire2a@fire2a.com
 
-# Tips & tricks
+## Tips & tricks
 
     # fix headers replacing MT for TMP
     sed -i '1{s/MT/TMP/}' Weather*.csv
