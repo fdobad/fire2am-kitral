@@ -27,7 +27,13 @@ jobs:
 
     - name: git archive
       run: |
-         git archive --format=zip --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --output "fire2am-kitral_${{ github.ref_name }}.zip" HEAD
+        git archive --format=tar --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --output "fire2am-kitral_${{ github.ref_name }}.tar" HEAD
+        git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output ../submodule_$sha1.tar'
+        tar --concatenate --file "fire2am-kitral_${{ github.ref_name }}.tar" submodule_*.tar
+        repo_root="$(pwd)"
+        cd ..
+        tar -tf "$(pwd)/fire2am-kitral_${{ github.ref_name }}.tar" | zip -@ "$(pwd)/fire2am-kitral_${{ github.ref_name }}.zip"
+        cd repo_root
 
     - name: Create Release
       uses: ncipollo/release-action@v1.12.0
