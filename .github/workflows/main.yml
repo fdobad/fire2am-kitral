@@ -20,20 +20,25 @@ jobs:
 
     - name: version bump
       run: |
-         VERSION=${GITHUB_REF_NAME#v}
-         echo "version is ${VERSION}"
-         sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
-         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.ui
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "version is ${VERSION}"
+        sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
+        sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.ui
 
     - name: git archive
       run: |
-        git archive --format=tar --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --output "fire2am-kitral_${{ github.ref_name }}.tar" HEAD
-        git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output ../submodule_$sha1.tar'
-        tar --concatenate --file "fire2am-kitral_${{ github.ref_name }}.tar" submodule_*.tar
-        repo_root="$(pwd)"
-        cd ..
-        tar -tf "$(pwd)/fire2am-kitral_${{ github.ref_name }}.tar" | zip -@ "$(pwd)/fire2am-kitral_${{ github.ref_name }}.zip"
-        cd repo_root
+        export repo_root="$(pwd)"
+        echo $repo_root
+        git archive --verbose --prefix fire2am/ --format tar --output repo_output.tar HEAD
+        git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
+        echo 'concatenate'
+        tar --concatenate --file repo_output.tar sub_repo_*.tar
+        echo 'mkdir'
+        mkdir "fire2am-kitral_${{ github.ref_name }}"
+        echo 'tar xf'
+        tar -xf repo_output.tar --directory "fire2am-kitral_${{ github.ref_name }}"
+        echo 'zip'
+        zip -r "fire2am-kitral_${{ github.ref_name }}".zip "fire2am-kitral_${{ github.ref_name }}"
 
     - name: Create Release
       uses: ncipollo/release-action@v1.12.0
