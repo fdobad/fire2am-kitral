@@ -39,3 +39,8 @@
 
 # 2. Give us feedback
 At the issues or directly to fire2a@fire2a.com
+
+# Tips & tricks
+
+    # fix headers replacing MT for TMP
+    sed -i '1{s/MT/TMP/}' Weather*.csv

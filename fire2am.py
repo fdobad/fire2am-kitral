@@ -924,11 +924,7 @@ class fire2amClass:
         args["finalGrid"] = True
         if args["nsims"] == 1:
             args["grids"] = True
-        nlog(
-            text="step 2",
-            title="makeArgs",
-            args=args,
-        )
+        nlog(text="step 2", title="makeArgs", args=args)
         # 2d crow fire logic
         # TODO ? ['OutFl', 'OutIntensity', 'OutRos']
         if "OutCrown" in args or "OutCrownConsumption" in args:
