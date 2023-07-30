@@ -1,3 +1,4 @@
+#!python3
 # coding: utf-8
 __version__ = "1.0"
 __author__ = "Cristobal Pais"
@@ -5,10 +6,8 @@ __author__ = "Cristobal Pais"
 # General importations
 import os
 import numpy as np
-import glob
 from argparse import ArgumentParser
 
-# Classes importations
 
 '''
 Returns       ArgumentParser object (NOT PARSED)
@@ -21,7 +20,7 @@ def Parser2():
     Groups are read for auto argparse app
     '''
     parser = ArgumentParser()
-
+    # groups definitions
     folders     = parser.add_argument_group(title='Instance directory')
     #landscape   = parser.add_argument_group(title='Landscape')
     weather     = parser.add_argument_group(title='Weather')
@@ -30,7 +29,7 @@ def Parser2():
     simulation  = parser.add_argument_group(title='Simulation')
     heuristic   = parser.add_argument_group(title='Heuristic')
     output      = parser.add_argument_group(title='Outputs')
-
+    #
     # Folders 
     folders.add_argument("--input-instance-folder",
                         help="The path to the folder contains all the files for the simulation",
@@ -42,7 +41,6 @@ def Parser2():
                         dest="OutFolder",
                         type=str,
                         default=None)                
-    
     # Integers
     simulation.add_argument("--sim-years",
                         help="Number of years per simulation (default 1)",
@@ -79,11 +77,6 @@ def Parser2():
                         dest="fmc",
                         type=int,
                         default=100)
-    weather.add_argument("--scenario",
-                        help="surface moisture content scenario)",
-                        dest="scenario",
-                        type=int,
-                        default=3)
     fire.add_argument("--IgnitionRad",
                         help="Adjacents degree for defining an ignition area (around ignition point)",
                         dest="IgRadius",
@@ -99,7 +92,6 @@ def Parser2():
                         dest="gridsFreq",
                         type=int,
                         default=-1)
-    
     # Heuristic
     heuristic.add_argument("--heuristic",
                         help="Heuristic version to run (-1 default no heuristic, 0 all)",
@@ -151,7 +143,6 @@ def Parser2():
                         dest="noEvaluation",
                         default=False,
                         action="store_true")
-    
     # Genetic params
     heuristic.add_argument("--ngen",
                         help="Number of generations for genetic algorithm",
@@ -183,7 +174,6 @@ def Parser2():
                         dest="indpb",
                         type=float,
                         default=0.5)
-    
     # Booleans
     weather.add_argument("--weather",
                         help="The 'type' of weather: constant, distribution, random, rows (default rows)",
@@ -321,8 +311,6 @@ def Parser2():
                         dest="pdfOutputs",
                         default=False,
                         action="store_true")
-    
-    
     # Floats
     fire.add_argument("--Fire-Period-Length",
                         help="Fire Period length in minutes (needed for ROS computations). Default 1.0",
@@ -377,28 +365,9 @@ def Parser2():
                         dest="BurningLen",
                         type=float,
                         default=-1.0)
-    fire.add_argument("--ROS10Factor",
-                        help="FM10 Crown Fire factor",
-                        dest="ROS10Factor",
-                        type=float,
-                        default=3.34)   
-    fire.add_argument("--CCFFactor",
-                        help="CCF Crown Fire factor",
-                        dest="CCFFactor",
-                        type=float,
-                        default=0.0)   
-    fire.add_argument("--CBDFactor",
-                        help="CBD Crown Fire factor",
-                        dest="CBDFactor",
-                        type=float,
-                        default=0.0)   
-        
-    
     return parser
-    '''
-    args = parser.parse_args()
-    return args
-    '''
+    # args = parser.parse_args()
+    # return args
     
     
     
