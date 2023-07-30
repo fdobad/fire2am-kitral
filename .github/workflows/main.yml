@@ -25,10 +25,10 @@ jobs:
 
     - name: git archive
       run: |
-         git archive --format=zip --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --output "fire2am_${{ github.ref_name }}.zip" HEAD
+         git archive --format=zip --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --output "fire2am-kitral_${{ github.ref_name }}.zip" HEAD
 
     - name: Create Release
       uses: ncipollo/release-action@v1.12.0
       with:
-        artifacts: "fire2am_${{ github.ref_name }}.zip"
+        artifacts: "fire2am-kitral_${{ github.ref_name }}.zip"
         token: ${{ secrets.GITHUB_TOKEN }}

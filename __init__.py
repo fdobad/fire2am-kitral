@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+__author__ = "Fernando Badilla"
+__email__ = "fbadilla@ing.uchile.cl"
+__version__ = "$Format:%H$"
+__license__ = "GPLv3"
 """
 /***************************************************************************
  fire2amClass
