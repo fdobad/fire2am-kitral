@@ -51,3 +51,10 @@ At the issues or directly to fire2a@fire2a.com
 
     # fix headers replacing MT for TMP
     sed -i '1{s/MT/TMP/}' Weather*.csv
+
+    # release
+    git push
+    git push --delete origin v0.0.1
+    git tag --delete v0.0.1
+    git tag -a v0.0.1 -m 'init'
+    git push origin v0.0.1

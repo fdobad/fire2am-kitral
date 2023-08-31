@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!python3
 ''' 
     # v1 for standalone use 
     from qgis.testing import start_app
