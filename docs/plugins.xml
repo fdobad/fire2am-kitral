@@ -92,7 +92,7 @@ Never gonna make you cry
 Never gonna say goodbye
 Never gonna tell a lie and hurt you</about>
 		<version>0.0.2</version>
-		<qgis_minimum_version>3.1</qgis_minimum_version>
+		<qgis_minimum_version>3.2</qgis_minimum_version>
 		<qgis_maximum_version>6.66</qgis_maximum_version>
 		<homepage>https://fdobad.github.io/fire2am-kitral</homepage>
 		<file_name>fire2am</file_name>
