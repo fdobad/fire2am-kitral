@@ -24,6 +24,8 @@ jobs:
         echo "version is ${VERSION}"
         sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.ui
+        git add fire2am_dialog_base.ui metadata.txt
+
         head -n 9 metadata.txt
         export repo_root="$(pwd)"
         echo $repo_root
