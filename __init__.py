@@ -29,7 +29,7 @@ __license__ = "GPLv3"
 from importlib.util import find_spec
 from pathlib import Path
 
-from pip import main as pip_main
+# from pip import main as pip_main
 
 
 # noinspection PyPep8Naming
@@ -50,7 +50,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
         else:
             not_found += [mod]
             error = True
-            pip_main(["install", dist])
+            # pip_main(["install", dist])
     if error:
         from .err_dialog import ErrDialog
 
