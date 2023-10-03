@@ -25,11 +25,11 @@ jobs:
         sed -i -e "s/version=0.0.1/version=${VERSION}/" metadata.txt
         sed -i -e "s/version=0.0.1/version=${VERSION}/" fire2am_dialog_base.ui
         git add fire2am_dialog_base.ui metadata.txt
-
-        head -n 9 metadata.txt
+        lestash=`git stash create`
+        # head -n 9 metadata.txt
         export repo_root="$(pwd)"
         echo $repo_root
-        git archive --verbose --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --prefix= --format tar --output repo_output.tar HEAD
+        git archive --verbose --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --prefix= --format tar --output repo_output.tar $lestash
         git submodule foreach --recursive 'git archive --verbose --prefix=$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
         echo 'concatenate'
         tar --concatenate --file repo_output.tar sub_repo_*.tar
