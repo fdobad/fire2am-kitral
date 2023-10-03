@@ -29,9 +29,7 @@ jobs:
       run: |
         export repo_root="$(pwd)"
         echo $repo_root
-        # git archive --verbose --prefix fire2am/ --format tar --output repo_output.tar HEAD
-        git archive --verbose --format tar --output repo_output.tar HEAD
-        # git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
+        git archive --verbose --prefix=fire2am/ --add-file=metadata.txt --add-file=fire2am_dialog_base.ui --prefix= --format tar --output repo_output.tar HEAD
         git submodule foreach --recursive 'git archive --verbose --prefix=$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
         echo 'concatenate'
         tar --concatenate --file repo_output.tar sub_repo_*.tar
