@@ -110,7 +110,6 @@ Never gonna tell a lie and hurt you</about>
 		<external_dependencies/>
 		<server/>
 	</pyqgis_plugin>
-</plugins>
 	<pyqgis_plugin name="Fire2am" version="0.0.3" plugin_id="4201029384756">
 		<description>Kitral Fire 2am=AAM=Advanced Analytics and Management, interfaces to Cell2Fire forest fire simulator </description>
 		<about>We're no strangers to love
