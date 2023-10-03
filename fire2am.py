@@ -372,15 +372,15 @@ class fire2amClass:
                 new_name=self.project.baseName(),
             )
         # if project not saved
-        if QgsProject().instance().absolutePath() == "":
-            self.iface.messageBar().pushMessage(
-                TAG,
-                "Save the project in the same folder as the rasters. Raising the save dialog...",
-                level=2,
-                duration=2,
-            )
-            QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
-            return
+        # if QgsProject().instance().absolutePath() == "":
+        #     self.iface.messageBar().pushMessage(
+        #         TAG,
+        #         "Save the project in the same folder as the rasters. Raising the save dialog...",
+        #         level=2,
+        #         duration=2,
+        #     )
+        #     QTimer().singleShot(2222, lambda: self.iface.actionSaveProject().trigger())
+        #     return
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
