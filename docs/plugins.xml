@@ -61,9 +61,9 @@ Never gonna tell a lie and hurt you</about>
 		<version>0.0.1</version>
 		<qgis_minimum_version>3.1</qgis_minimum_version>
 		<qgis_maximum_version>6.66</qgis_maximum_version>
-		<homepage>https://fdobad.github.io/fire2a-kitral</homepage>
+		<homepage>https://fdobad.github.io/fire2am-kitral</homepage>
 		<file_name>fire2am</file_name>
-		<icon>https://fdobad.github.io/fire2a-kitral/fire2am_icon.png</icon>
+		<icon>https://fdobad.github.io/fire2am-kitral/fire2am_icon.png</icon>
 		<author_name>fdobad</author_name>
 		<download_url>https://github.com/fdobad/fire2am-kitral/releases/download/v0.0.1/fire2am-kitral_v0.0.1.zip</download_url>
 		<uploaded_by>fdobad</uploaded_by>

@@ -29,16 +29,19 @@ jobs:
       run: |
         export repo_root="$(pwd)"
         echo $repo_root
-        git archive --verbose --prefix fire2am/ --format tar --output repo_output.tar HEAD
-        git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
+        # git archive --verbose --prefix fire2am/ --format tar --output repo_output.tar HEAD
+        git archive --verbose --format tar --output repo_output.tar HEAD
+        # git submodule foreach --recursive 'git archive --verbose --prefix=fire2am/$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
+        git submodule foreach --recursive 'git archive --verbose --prefix=$path/ --format tar HEAD --output $repo_root/sub_repo_$sha1.tar'
         echo 'concatenate'
         tar --concatenate --file repo_output.tar sub_repo_*.tar
         echo 'mkdir'
-        mkdir "fire2am-kitral_${{ github.ref_name }}"
+        mkdir "fire2am"
+        # mkdir "fire2am-kitral_${{ github.ref_name }}"
         echo 'tar xf'
-        tar -xf repo_output.tar --directory "fire2am-kitral_${{ github.ref_name }}"
+        tar -xf repo_output.tar --directory fire2am
         echo 'zip'
-        zip -r "fire2am-kitral_${{ github.ref_name }}".zip "fire2am-kitral_${{ github.ref_name }}"
+        zip -r "fire2am-kitral_${{ github.ref_name }}".zip "fire2am"
 
     - name: Create Release
       uses: ncipollo/release-action@v1.12.0
