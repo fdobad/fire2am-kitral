@@ -932,7 +932,7 @@ or imposible configurations</string>
         <widget class="QLabel" name="label_17">
          <property name="text">
           <string>version=0.0.1
-Documentation at: fdobad.github.io/doctest
+Documentation at: https://fire2a.github.io/docs/
 Subscribe to the repo to get notified of new releases
 Ask the fire2a team for access to the repo</string>
          </property>
